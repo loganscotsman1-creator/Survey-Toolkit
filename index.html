@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Survey Toolkit</title>
+  <meta name="description" content="Engineering surveying calculations: traverses, missing data, radiation, horizontal and vertical curves, and topographic surface analysis.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path d="M16 3 4 28h24L16 3Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="16" cy="19" r="3" fill="currentColor"/></svg>
+      <span>Survey Toolkit</span>
+    </div>
+    <div class="settings">
+      <label>Units
+        <select id="units">
+          <option value="ft">Feet</option>
+          <option value="m">Meters</option>
+        </select>
+      </label>
+      <label>Seconds shown
+        <select id="secDec">
+          <option value="0">1"</option>
+          <option value="1">0.1"</option>
+        </select>
+      </label>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="traverse" class="active">Traverse</button>
+    <button role="tab" data-tab="missing">Missing Data</button>
+    <button role="tab" data-tab="radiation">Radiation</button>
+    <button role="tab" data-tab="hcurve">Horizontal Curve</button>
+    <button role="tab" data-tab="vcurve">Vertical Curve</button>
+    <button role="tab" data-tab="topo">Topo Survey</button>
+    <button role="tab" data-tab="help">Help</button>
+  </nav>
+
+  <main>
+    <!-- ================= TRAVERSE ================= -->
+    <section id="tab-traverse" class="tab-panel active">
+      <div class="panel-head">
+        <h1>Closed Traverse</h1>
+        <p>Enter each course in order around the figure. The program balances angles, computes latitudes and departures, closure and precision, applies the selected adjustment, and computes coordinates and area.</p>
+      </div>
+      <div class="card">
+        <div class="form-row">
+          <label>Data entered as
+            <select id="tr-mode">
+              <option value="distdir">Distances + directions/angles</option>
+              <option value="latdep">Latitudes + departures</option>
+            </select>
+          </label>
+          <label class="dist-only">Direction type
+            <select id="tr-dirtype">
+              <option value="direction">Bearings or azimuths</option>
+              <option value="angles">Interior angles</option>
+            </select>
+          </label>
+          <label class="angles-only">Traverse runs
+            <select id="tr-turn">
+              <option value="cw">Clockwise</option>
+              <option value="ccw">Counter-clockwise</option>
+            </select>
+          </label>
+          <label class="angles-only">Direction of first course
+            <input id="tr-startdir" type="text" placeholder="N 45-30-00 E or 45-30-00">
+          </label>
+          <label>Adjustment
+            <select id="tr-method">
+              <option value="compass">Compass (Bowditch) rule</option>
+              <option value="transit">Transit rule</option>
+              <option value="none">None (show closure only)</option>
+            </select>
+          </label>
+          <label>Start N <input id="tr-n" type="text" value="5000.00"></label>
+          <label>Start E <input id="tr-e" type="text" value="5000.00"></label>
+          <label>Required precision 1:
+            <input id="tr-req" type="text" value="10000">
+          </label>
+        </div>
+        <p class="hint" id="tr-hint"></p>
+        <div id="tr-grid"></div>
+        <div class="btn-row">
+          <button class="btn" data-act="add-row" data-grid="tr">+ Add course</button>
+          <button class="btn primary" id="tr-run">Compute</button>
+          <button class="btn ghost" id="tr-example">Load example</button>
+          <button class="btn ghost" id="tr-clear">Clear</button>
+        </div>
+      </div>
+      <div id="tr-out" class="results"></div>
+    </section>
+
+    <!-- ================= MISSING DATA ================= -->
+    <section id="tab-missing" class="tab-panel">
+      <div class="panel-head">
+        <h1>Missing Data (Traverse)</h1>
+        <p>Leave a value blank or type <code>?</code> where it is unknown. Closure (ΣLat = 0, ΣDep = 0) supplies two equations, so up to two unknowns can be found:</p>
+        <ul class="compact">
+          <li>Length <em>and</em> direction of one course</li>
+          <li>Lengths of two courses</li>
+          <li>Directions of two courses (two solutions possible)</li>
+          <li>Length of one course and direction of another (two solutions possible)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="form-row">
+          <label>Start N <input id="ms-n" type="text" value="5000.00"></label>
+          <label>Start E <input id="ms-e" type="text" value="5000.00"></label>
+        </div>
+        <div id="ms-grid"></div>
+        <div class="btn-row">
+          <button class="btn" data-act="add-row" data-grid="ms">+ Add course</button>
+          <button class="btn primary" id="ms-run">Solve</button>
+          <button class="btn ghost" id="ms-example">Load example</button>
+          <button class="btn ghost" id="ms-clear">Clear</button>
+        </div>
+      </div>
+      <div id="ms-out" class="results"></div>
+    </section>
+
+    <!-- ================= RADIATION ================= -->
+    <section id="tab-radiation" class="tab-panel">
+      <div class="panel-head">
+        <h1>Radiation Survey</h1>
+        <p>All points are located by an angle (or direction) and a horizontal distance from one occupied station. The points are joined in the order entered to form the parcel boundary.</p>
+      </div>
+      <div class="card">
+        <div class="form-row">
+          <label>Occupied station <input id="rd-name" type="text" value="STA 100"></label>
+          <label>N <input id="rd-n" type="text" value="10000.00"></label>
+          <label>E <input id="rd-e" type="text" value="5000.00"></label>
+          <label>Readings are
+            <select id="rd-ref">
+              <option value="angle">Angles right from backsight</option>
+              <option value="direction">Azimuths / bearings</option>
+            </select>
+          </label>
+          <label class="rd-bs">Backsight direction <input id="rd-bs" type="text" value="0-00-00" placeholder="azimuth or bearing"></label>
+          <label class="check"><input id="rd-incl" type="checkbox"> Occupied station is a corner of the parcel</label>
+        </div>
+        <div id="rd-grid"></div>
+        <div class="btn-row">
+          <button class="btn" data-act="add-row" data-grid="rd">+ Add point</button>
+          <button class="btn primary" id="rd-run">Compute</button>
+          <button class="btn ghost" id="rd-example">Load example</button>
+          <button class="btn ghost" id="rd-clear">Clear</button>
+        </div>
+      </div>
+      <div id="rd-out" class="results"></div>
+    </section>
+
+    <!-- ================= HORIZONTAL CURVE ================= -->
+    <section id="tab-hcurve" class="tab-panel">
+      <div class="panel-head">
+        <h1>Horizontal Curve</h1>
+        <p>Simple circular curve elements and a stakeout table with deflection angles, chords and tangent offsets at every full station of the chosen interval.</p>
+      </div>
+      <div class="card">
+        <div class="form-grid">
+          <label>Intersection angle Δ <input id="hc-delta" type="text" placeholder="24-00-00"></label>
+          <label>Curve defined by
+            <select id="hc-by">
+              <option value="D">Degree of curvature</option>
+              <option value="R">Radius</option>
+            </select>
+          </label>
+          <label class="hc-D">Degree of curvature D <input id="hc-D" type="text" placeholder="4-00-00"></label>
+          <label class="hc-R">Radius R <input id="hc-R" type="text" placeholder="1432.39"></label>
+          <label>D definition
+            <select id="hc-ddef">
+              <option value="arc">Arc (highway)</option>
+              <option value="chord">Chord (railway)</option>
+            </select>
+          </label>
+          <label>D base length <input id="hc-base" type="text" value="100"></label>
+          <label>Known station is the
+            <select id="hc-statype">
+              <option value="PI">PI</option>
+              <option value="PC">PC</option>
+            </select>
+          </label>
+          <label>Station <input id="hc-sta" type="text" placeholder="64+27.30"></label>
+          <label>Stakeout interval
+            <select id="hc-int">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="20">20</option>
+              <option value="10">10</option>
+            </select>
+          </label>
+          <label>Curve turns
+            <select id="hc-turn">
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+            </select>
+          </label>
+          <label>PI northing <span class="opt">(optional)</span><input id="hc-pin" type="text"></label>
+          <label>PI easting <span class="opt">(optional)</span><input id="hc-pie" type="text"></label>
+          <label>Back tangent direction <span class="opt">(optional)</span><input id="hc-baz" type="text" placeholder="N 75-00-00 E"></label>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="hc-run">Compute</button>
+          <button class="btn ghost" id="hc-example">Load example</button>
+        </div>
+      </div>
+      <div id="hc-out" class="results"></div>
+    </section>
+
+    <!-- ================= VERTICAL CURVE ================= -->
+    <section id="tab-vcurve" class="tab-panel">
+      <div class="panel-head">
+        <h1>Vertical Curve</h1>
+        <p>Equal-tangent parabolic curve. Elevations are computed at the BVC, EVC, PVI, high/low point and every full station of the chosen interval.</p>
+      </div>
+      <div class="card">
+        <div class="form-grid">
+          <label>PVI station <input id="vc-sta" type="text" placeholder="50+00"></label>
+          <label>PVI elevation <input id="vc-elev" type="text" placeholder="500.00"></label>
+          <label>Curve length L <input id="vc-L" type="text" placeholder="400"></label>
+          <label>Back grade g₁ (%) <input id="vc-g1" type="text" placeholder="+3.0"></label>
+          <label>Forward grade g₂ (%) <input id="vc-g2" type="text" placeholder="-2.0"></label>
+          <label>Point interval
+            <select id="vc-int">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="20">20</option>
+              <option value="10">10</option>
+            </select>
+          </label>
+          <label>Elevation at station <span class="opt">(optional)</span><input id="vc-look" type="text" placeholder="50+40"></label>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="vc-run">Compute</button>
+          <button class="btn ghost" id="vc-example">Load example</button>
+        </div>
+      </div>
+      <div id="vc-out" class="results"></div>
+    </section>
+
+    <!-- ================= TOPO ================= -->
+    <section id="tab-topo" class="tab-panel">
+      <div class="panel-head">
+        <h1>Topographic Survey</h1>
+        <p>Load shots from a file or paste them. Supported: CSV / TXT / tab or space delimited (PNEZD, PENZD, PNEZ, PENZ, NEZ, XYZ or any file with a header row), LandXML (CgPoints or surface points) and GeoJSON points with Z.</p>
+      </div>
+      <div class="card">
+        <div class="form-row">
+          <label>File <input id="tp-file" type="file" accept=".csv,.txt,.xyz,.pnezd,.xml,.landxml,.json,.geojson,.asc,.dat"></label>
+          <label>Format
+            <select id="tp-format">
+              <option value="auto">Auto-detect</option>
+              <option value="PNEZD">PNEZD</option>
+              <option value="PENZD">PENZD</option>
+              <option value="PNEZ">PNEZ</option>
+              <option value="PENZ">PENZ</option>
+              <option value="NEZ">NEZ</option>
+              <option value="XYZ">XYZ / ENZ</option>
+              <option value="landxml">LandXML</option>
+              <option value="geojson">GeoJSON</option>
+            </select>
+          </label>
+        </div>
+        <textarea id="tp-text" rows="7" spellcheck="false" placeholder="1001,10000.00,5000.00,742.15,GS&#10;1002,10012.50,5021.30,742.80,GS&#10;…"></textarea>
+        <div class="form-row">
+          <label>Contour interval <input id="tp-ci" type="text" value="1"></label>
+          <label>Index every <input id="tp-idx" type="text" value="5"></label>
+          <label>Max triangle edge <span class="opt">(0 = none)</span><input id="tp-maxedge" type="text" value="0"></label>
+          <label>Reference elev. for volumes <span class="opt">(optional)</span><input id="tp-ref" type="text"></label>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="tp-run">Load &amp; analyse</button>
+          <button class="btn ghost" id="tp-example">Load example</button>
+        </div>
+      </div>
+      <div id="tp-out" class="results"></div>
+    </section>
+
+    <!-- ================= HELP ================= -->
+    <section id="tab-help" class="tab-panel">
+      <div class="panel-head"><h1>Help &amp; formulas</h1></div>
+      <div class="card prose">
+        <h2>Entering angles and directions</h2>
+        <ul>
+          <li>Angles: <code>45-30-15</code>, <code>45°30'15"</code>, <code>45 30 15</code>, <code>45d30m15s</code> or decimal degrees <code>45.504167</code>.</li>
+          <li>Bearings: <code>N 45-30-15 E</code>, <code>S12.5W</code>, <code>N 45°30'15" W</code>.</li>
+          <li>Azimuths: a plain angle, measured clockwise from north (0–360°).</li>
+          <li>Stations: <code>12+34.56</code> (feet, 100 per station) or <code>1+234.567</code> (meters, 1000 per station). Plain numbers also work.</li>
+          <li>Tables accept pasting straight from a spreadsheet (tab or comma separated).</li>
+        </ul>
+        <h2>Traverse</h2>
+        <ul>
+          <li>Latitude = L·cos(Az), Departure = L·sin(Az).</li>
+          <li>Interior angle sum = (n − 2)·180°. The misclosure is distributed equally to each angle.</li>
+          <li>Clockwise traverse: Az<sub>next</sub> = Az<sub>prev</sub> + 180° − ∠. Counter-clockwise: Az<sub>next</sub> = Az<sub>prev</sub> + 180° + ∠.</li>
+          <li>Linear misclosure = √(ΣLat² + ΣDep²); precision = 1 : (perimeter ÷ misclosure).</li>
+          <li>Compass rule: c<sub>Lat</sub> = −ΣLat · L / P, c<sub>Dep</sub> = −ΣDep · L / P.</li>
+          <li>Transit rule: c<sub>Lat</sub> = −ΣLat · |Lat| / Σ|Lat|, c<sub>Dep</sub> = −ΣDep · |Dep| / Σ|Dep|.</li>
+          <li>Area by coordinates: A = ½ |Σ(E<sub>i</sub>·N<sub>i+1</sub> − E<sub>i+1</sub>·N<sub>i</sub>)|, checked by the DMD method.</li>
+        </ul>
+        <h2>Horizontal curve</h2>
+        <ul>
+          <li>Arc definition: R = (base · 180) / (π · D). Chord definition: R = (base / 2) / sin(D/2).</li>
+          <li>T = R·tan(Δ/2), L = base · Δ / D, LC = 2R·sin(Δ/2), E = R(sec(Δ/2) − 1), M = R(1 − cos(Δ/2)).</li>
+          <li>PC = PI − T, PT = PC + L. Deflection to a point l beyond the PC = l·D / (2·base); chord = 2R·sin(deflection).</li>
+          <li>Tangent offsets: x = R·sin θ, y = R(1 − cos θ) with θ = 2 × deflection.</li>
+        </ul>
+        <h2>Vertical curve</h2>
+        <ul>
+          <li>BVC = PVI − L/2, EVC = PVI + L/2, A = g₂ − g₁, K = L / |A|.</li>
+          <li>Elevation x from the BVC: y = y<sub>BVC</sub> + g₁·x/100 + (A / 200L)·x².</li>
+          <li>High/low point: x = −g₁·L / A (when it falls within the curve).</li>
+        </ul>
+        <h2>Topographic survey</h2>
+        <ul>
+          <li>A Delaunay TIN is built from the shots. Points at identical N/E are kept once and reported.</li>
+          <li>Spikes: each point's elevation is compared with the mean of its TIN neighbours; residuals with a robust z-score above 3.5 are flagged (typical cause: wrong rod height or a shot on an object).</li>
+          <li>Volumes above/below a reference elevation are computed from triangular prisms, split exactly where they cross the reference plane.</li>
+          <li>Contours are traced through the TIN by linear interpolation and can be exported as DXF.</li>
+        </ul>
+        <p class="hint">Always check results independently before using them for design, construction or a legal description.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="tooltip" class="tooltip" hidden></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/traverse.js"></script>
+  <script src="js/curves.js"></script>
+  <script src="js/topo.js"></script>
+  <script src="js/samples.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
