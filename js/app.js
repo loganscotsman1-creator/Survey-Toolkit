@@ -53,18 +53,26 @@
   });
   UI.initAngleHelper();
 
-  // Segmented toggles in the header drive the (hidden) setting selects.
-  document.querySelectorAll('.segmented').forEach((group) => {
-    const select = $(group.dataset.for);
-    const sync = () => group.querySelectorAll('button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === select.value)));
-    group.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-      if (select.value === b.dataset.value) return;
-      select.value = b.dataset.value;
-      sync();
-      select.dispatchEvent(new Event('change'));
-    }));
-    sync();
+  // Each tool's form gets Units (and, where angles are used, angle precision) dropdowns.
+  // They mirror the shared hidden selects, so changing one changes them all.
+  const TOOL_SETTINGS = { traverse: true, missing: true, radiation: true, hcurve: true, vcurve: false, topo: false };
+  Object.entries(TOOL_SETTINGS).forEach(([tab, angles]) => {
+    const card = document.querySelector(`#tab-${tab} .card`);
+    const row = document.createElement('div');
+    row.className = 'tool-settings';
+    row.innerHTML =
+      '<label>Units<select data-mirror="units"><option value="ft">Feet</option><option value="m">Meters</option></select></label>' +
+      (angles ? '<label>Show angles to<select data-mirror="secDec"><option value="0">Nearest second (1″)</option><option value="1">Tenth of a second (0.1″)</option></select></label>' : '');
+    card.prepend(row);
   });
+  const syncMirrors = () => document.querySelectorAll('[data-mirror]').forEach((m) => { m.value = $(m.dataset.mirror).value; });
+  document.querySelectorAll('[data-mirror]').forEach((m) => m.addEventListener('change', () => {
+    const shared = $(m.dataset.mirror);
+    shared.value = m.value;
+    syncMirrors();
+    shared.dispatchEvent(new Event('change'));
+  }));
+  syncMirrors();
 
   $('units').addEventListener('change', () => { updateLabels(); Object.values(rerun).forEach((f) => f && f()); });
   $('secDec').addEventListener('change', () => Object.values(rerun).forEach((f) => f && f()));

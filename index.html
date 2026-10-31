@@ -13,30 +13,15 @@
       <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path d="M16 3 4 28h24L16 3Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="16" cy="19" r="3" fill="currentColor"/></svg>
       <span>Survey Toolkit</span>
     </div>
-    <div class="settings" aria-label="Display settings">
-      <div class="setting">
-        <span class="setting-label" id="units-label">Units</span>
-        <div class="segmented" role="radiogroup" aria-labelledby="units-label" data-for="units">
-          <button type="button" role="radio" data-value="ft">Feet</button>
-          <button type="button" role="radio" data-value="m">Meters</button>
-        </div>
-      </div>
-      <div class="setting">
-        <span class="setting-label" id="sec-label">Angles shown to</span>
-        <div class="segmented" role="radiogroup" aria-labelledby="sec-label" data-for="secDec">
-          <button type="button" role="radio" data-value="0" title="Whole seconds, e.g. 45°30'15&quot;">1″</button>
-          <button type="button" role="radio" data-value="1" title="Tenths of a second, e.g. 45°30'15.2&quot;">0.1″</button>
-        </div>
-      </div>
-      <select id="units" hidden>
-        <option value="ft">Feet</option>
-        <option value="m">Meters</option>
-      </select>
-      <select id="secDec" hidden>
-        <option value="0">1"</option>
-        <option value="1">0.1"</option>
-      </select>
-    </div>
+    <!-- Shared settings; each tool's form has visible copies that stay in sync. -->
+    <select id="units" hidden>
+      <option value="ft">Feet</option>
+      <option value="m">Meters</option>
+    </select>
+    <select id="secDec" hidden>
+      <option value="0">1"</option>
+      <option value="1">0.1"</option>
+    </select>
   </header>
 
   <nav class="tabs" role="tablist">
