@@ -40,24 +40,31 @@
   if (initial) goTo(initial);
 
   // ---------- D-M-S guides ----------
-  const DMS_SHORT = 'Angles use <b>D-M-S</b> (degrees-minutes-seconds) separated by dashes: <code>45-30-15</code> = 45° 30′ 15″. ' +
-    'Bearings: <code>N 45-30-15 E</code>. Azimuths: <code>225-00-00</code>. Click any angle box to see how your entry is read.';
-  const DMS_TABLE = UI.table(['You type', 'It means'], [
-    [{ v: '<code>45-30-15</code>', raw: true, cls: 'txt' }, { v: '45° 30′ 15″ — 45 degrees, 30 minutes, 15 seconds', cls: 'txt' }],
-    [{ v: '<code>45 30 15</code> or <code>45°30\'15"</code>', raw: true, cls: 'txt' }, { v: 'the same angle (spaces or symbols work too)', cls: 'txt' }],
-    [{ v: '<code>7-05-00</code>', raw: true, cls: 'txt' }, { v: '7° 05′ 00″ (leading zeros are optional: 7-5-0 is the same)', cls: 'txt' }],
-    [{ v: '<code>45.5042</code>', raw: true, cls: 'txt' }, { v: 'decimal degrees (≈ 45° 30′ 15″)', cls: 'txt' }],
-    [{ v: '<code>N 45-30-15 E</code>', raw: true, cls: 'txt' }, { v: 'bearing: start facing North, turn 45° 30′ 15″ toward East', cls: 'txt' }],
-    [{ v: '<code>225-00-00</code>', raw: true, cls: 'txt' }, { v: 'azimuth: measured clockwise from North (0° to 360°)', cls: 'txt' }],
-  ]);
-  const DMS_READ = '<p class="hint"><b>Reading results:</b> <code>45°30\'15"</code> — ° = degrees, \' = minutes, " = seconds. ' +
-    '60 seconds = 1 minute and 60 minutes = 1 degree, so minutes and seconds are always less than 60. Corrections such as <code>-4.0"</code> are in seconds.</p>';
+  const DMS_SHORT = 'Type angles as degrees-minutes-seconds: <code>45-30-15</code> = 45° 30′ 15″. Bearings: <code>N 45-30-15 E</code>.';
+  const DMS_FULL = '<ul class="dms-list">' +
+    '<li><code>45-30-15</code> = 45° 30′ 15″ (degrees-minutes-seconds)</li>' +
+    '<li><code>N 45-30-15 E</code> = a bearing</li>' +
+    '<li><code>225-00-00</code> = an azimuth, clockwise from north</li>' +
+    '</ul><p class="hint">Click any angle box and it shows how your entry is read.</p>';
   document.querySelectorAll('.dms-guide').forEach((el) => {
     el.innerHTML = el.classList.contains('compact')
-      ? `<span class="dms-icon" aria-hidden="true">°′″</span><div>${DMS_SHORT} <details><summary>More formats &amp; how to read results</summary>${DMS_TABLE}${DMS_READ}</details></div>`
-      : DMS_TABLE + DMS_READ;
+      ? `<span class="dms-icon" aria-hidden="true">°′″</span><div>${DMS_SHORT}</div>`
+      : DMS_FULL;
   });
   UI.initAngleHelper();
+
+  // Segmented toggles in the header drive the (hidden) setting selects.
+  document.querySelectorAll('.segmented').forEach((group) => {
+    const select = $(group.dataset.for);
+    const sync = () => group.querySelectorAll('button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === select.value)));
+    group.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+      if (select.value === b.dataset.value) return;
+      select.value = b.dataset.value;
+      sync();
+      select.dispatchEvent(new Event('change'));
+    }));
+    sync();
+  });
 
   $('units').addEventListener('change', () => { updateLabels(); Object.values(rerun).forEach((f) => f && f()); });
   $('secDec').addEventListener('change', () => Object.values(rerun).forEach((f) => f && f()));

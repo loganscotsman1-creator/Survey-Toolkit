@@ -137,17 +137,12 @@
 
   UI.angleHint = function (kind, value, allowUnknown) {
     const v = String(value || '').trim();
-    const dms = '<b>D-M-S</b> = degrees-minutes-seconds';
-    if (!v) {
-      return kind === 'dir'
-        ? `Bearing <b>N 45-30-15 E</b> or azimuth <b>45-30-15</b> · ${dms}`
-        : `Type <b>45-30-15</b> for 45° 30′ 15″ · ${dms}`;
-    }
+    if (!v) return kind === 'dir' ? 'e.g. <b>N 45-30-15 E</b> or <b>45-30-15</b>' : 'e.g. <b>45-30-15</b> = 45° 30′ 15″';
     if (allowUnknown && v === '?') return 'Unknown — this value will be solved';
     const val = kind === 'dir' ? S.parseDirection(v) : S.parseAngle(v);
     if (!isFinite(val)) {
       const parts = v.replace(/^[NS]\s*|\s*[EW]$/gi, '').split(/[^0-9.]+/).filter(Boolean).map(Number);
-      let why = 'use D-M-S, e.g. 45-30-15';
+      let why = 'try 45-30-15';
       if (parts.length > 1 && (parts[1] >= 60 || parts[2] >= 60)) why = 'minutes and seconds must be less than 60';
       else if (kind === 'dir' && /^[NS]/i.test(v) && !/[EW]$/i.test(v)) why = 'a bearing ends with E or W, e.g. N 45-30-15 E';
       else if (kind === 'dir' && /^[NS]/i.test(v)) why = 'a bearing angle must be 0° to 90°';
