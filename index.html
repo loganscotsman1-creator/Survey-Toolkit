@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Survey Toolkit</title>
-  <meta name="description" content="Engineering surveying calculations: traverses, missing data, radiation, horizontal and vertical curves, and topographic surface analysis.">
+  <meta name="description" content="Engineering surveying calculations: traverses, missing sides, radiation, horizontal and vertical curves, and topographic surface analysis.">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <header class="app-header">
-    <div class="brand">
+    <div class="brand" role="button" tabindex="0" data-go="home" title="Back to the tool menu">
       <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path d="M16 3 4 28h24L16 3Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="16" cy="19" r="3" fill="currentColor"/></svg>
       <span>Survey Toolkit</span>
     </div>
@@ -30,8 +30,9 @@
   </header>
 
   <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="traverse" class="active">Traverse</button>
-    <button role="tab" data-tab="missing">Missing Data</button>
+    <button role="tab" data-tab="home" class="active home-tab">☰ All tools</button>
+    <button role="tab" data-tab="traverse">Traverse</button>
+    <button role="tab" data-tab="missing">Missing Side</button>
     <button role="tab" data-tab="radiation">Radiation</button>
     <button role="tab" data-tab="hcurve">Horizontal Curve</button>
     <button role="tab" data-tab="vcurve">Vertical Curve</button>
@@ -41,11 +42,73 @@
 
   <main>
     <!-- ================= TRAVERSE ================= -->
-    <section id="tab-traverse" class="tab-panel active">
+    <section id="tab-home" class="tab-panel active">
+      <div class="panel-head">
+        <h1>Choose a tool</h1>
+        <p>Pick what you want to calculate. You can switch tools at any time from the bar above, or return here with <strong>☰ All tools</strong>.</p>
+      </div>
+      <div class="tool-menu">
+        <button class="tool-card" data-go="traverse">
+          <span class="tool-title">Closed Traverse</span>
+          <ul>
+            <li>Enter courses (A-B, B-C …) as bearings/azimuths, interior angles, or latitudes &amp; departures</li>
+            <li>Finds misclosure and precision, then adjusts by the Compass or Transit rule with corrections highlighted</li>
+            <li>Gives adjusted bearings, distances, coordinates, area and a sketch</li>
+          </ul>
+        </button>
+        <button class="tool-card" data-go="missing">
+          <span class="tool-title">Missing Side</span>
+          <ul>
+            <li>Solves an unknown side of a closed traverse from the other courses</li>
+            <li>Handles a missing length and bearing, two lengths, two bearings, or one of each</li>
+            <li>Shows the completed traverse, coordinates, area and sketch</li>
+          </ul>
+        </button>
+        <button class="tool-card" data-go="radiation">
+          <span class="tool-title">Radiation</span>
+          <ul>
+            <li>Locates points shot from one station by angle and distance</li>
+            <li>Computes point coordinates and the boundary courses between them</li>
+            <li>Gives the parcel area, interior angles and a sketch</li>
+          </ul>
+        </button>
+        <button class="tool-card" data-go="hcurve">
+          <span class="tool-title">Horizontal Curve</span>
+          <ul>
+            <li>From Δ plus degree of curvature or radius, and a PI or PC station</li>
+            <li>Computes T, L, LC, E, M and the PC / PI / PT stations</li>
+            <li>Stakeout table of deflections and chords every 25, 50 or 100 ft</li>
+          </ul>
+        </button>
+        <button class="tool-card" data-go="vcurve">
+          <span class="tool-title">Vertical Curve</span>
+          <ul>
+            <li>From PVI station and elevation, curve length and tangent grades</li>
+            <li>Elevations every 25, 50 or 100 ft, plus the high or low point</li>
+            <li>Shows K value, grades, offsets and a profile plot</li>
+          </ul>
+        </button>
+        <button class="tool-card" data-go="topo">
+          <span class="tool-title">Topo Survey</span>
+          <ul>
+            <li>Imports shots from CSV/TXT, LandXML or GeoJSON</li>
+            <li>Flags duplicate points and likely bad shots; reports slopes, areas and volumes</li>
+            <li>Draws a contour map you can zoom, and exports PNG, DXF or CSV</li>
+          </ul>
+        </button>
+      </div>
+      <div class="card dms-card">
+        <h2>Entering angles (D-M-S)</h2>
+        <div class="dms-guide"></div>
+      </div>
+    </section>
+
+    <section id="tab-traverse" class="tab-panel">
       <div class="panel-head">
         <h1>Closed Traverse</h1>
         <p>Enter each course in order around the figure. The program balances angles, computes latitudes and departures, closure and precision, applies the selected adjustment, and computes coordinates and area.</p>
       </div>
+      <div class="dms-guide compact"></div>
       <div class="card">
         <div class="form-row">
           <label>Data entered as
@@ -66,8 +129,8 @@
               <option value="ccw">Counter-clockwise</option>
             </select>
           </label>
-          <label class="angles-only">Direction of first course
-            <input id="tr-startdir" type="text" placeholder="N 45-30-00 E or 45-30-00">
+          <label class="angles-only">Direction of first course (D-M-S)
+            <input id="tr-startdir" type="text" data-kind="dir" placeholder="N 45-30-00 E or 45-30-00">
           </label>
           <label>Adjustment
             <select id="tr-method">
@@ -97,7 +160,7 @@
     <!-- ================= MISSING DATA ================= -->
     <section id="tab-missing" class="tab-panel">
       <div class="panel-head">
-        <h1>Missing Data (Traverse)</h1>
+        <h1>Missing Side (Traverse)</h1>
         <p>Leave a value blank or type <code>?</code> where it is unknown. Closure (ΣLat = 0, ΣDep = 0) supplies two equations, so up to two unknowns can be found:</p>
         <ul class="compact">
           <li>Length <em>and</em> direction of one course</li>
@@ -106,6 +169,7 @@
           <li>Length of one course and direction of another (two solutions possible)</li>
         </ul>
       </div>
+      <div class="dms-guide compact"></div>
       <div class="card">
         <div class="form-row">
           <label>Start N <input id="ms-n" type="text" value="5000.00"></label>
@@ -128,6 +192,7 @@
         <h1>Radiation Survey</h1>
         <p>All points are located by an angle (or direction) and a horizontal distance from one occupied station. The points are joined in the order entered to form the parcel boundary.</p>
       </div>
+      <div class="dms-guide compact"></div>
       <div class="card">
         <div class="form-row">
           <label>Occupied station <input id="rd-name" type="text" value="STA 100"></label>
@@ -139,7 +204,7 @@
               <option value="direction">Azimuths / bearings</option>
             </select>
           </label>
-          <label class="rd-bs">Backsight direction <input id="rd-bs" type="text" value="0-00-00" placeholder="azimuth or bearing"></label>
+          <label class="rd-bs">Backsight direction (D-M-S) <input id="rd-bs" type="text" data-kind="dir" value="0-00-00" placeholder="azimuth or bearing"></label>
           <label class="check"><input id="rd-incl" type="checkbox"> Occupied station is a corner of the parcel</label>
         </div>
         <div id="rd-grid"></div>
@@ -159,16 +224,17 @@
         <h1>Horizontal Curve</h1>
         <p>Simple circular curve elements and a stakeout table with deflection angles, chords and tangent offsets at every full station of the chosen interval.</p>
       </div>
+      <div class="dms-guide compact"></div>
       <div class="card">
         <div class="form-grid">
-          <label>Intersection angle Δ <input id="hc-delta" type="text" placeholder="24-00-00"></label>
+          <label>Intersection angle Δ (D-M-S) <input id="hc-delta" type="text" data-kind="angle" placeholder="24-00-00"></label>
           <label>Curve defined by
             <select id="hc-by">
               <option value="D">Degree of curvature</option>
               <option value="R">Radius</option>
             </select>
           </label>
-          <label class="hc-D">Degree of curvature D <input id="hc-D" type="text" placeholder="4-00-00"></label>
+          <label class="hc-D">Degree of curvature D (D-M-S) <input id="hc-D" type="text" data-kind="angle" placeholder="4-00-00"></label>
           <label class="hc-R">Radius R <input id="hc-R" type="text" placeholder="1432.39"></label>
           <label>D definition
             <select id="hc-ddef">
@@ -201,7 +267,7 @@
           </label>
           <label>PI northing <span class="opt">(optional)</span><input id="hc-pin" type="text"></label>
           <label>PI easting <span class="opt">(optional)</span><input id="hc-pie" type="text"></label>
-          <label>Back tangent direction <span class="opt">(optional)</span><input id="hc-baz" type="text" placeholder="N 75-00-00 E"></label>
+          <label>Back tangent direction <span class="opt">(optional)</span><input id="hc-baz" type="text" data-kind="dir" placeholder="N 75-00-00 E"></label>
         </div>
         <div class="btn-row">
           <button class="btn primary" id="hc-run">Compute</button>

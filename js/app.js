@@ -31,8 +31,33 @@
       if (redraw[b.dataset.tab]) requestAnimationFrame(redraw[b.dataset.tab]);
     });
   });
+  const goTo = (tab) => { const b = document.querySelector(`.tabs button[data-tab="${tab}"]`); if (b) { b.click(); window.scrollTo(0, 0); } };
+  document.querySelectorAll('[data-go]').forEach((el) => {
+    el.addEventListener('click', () => goTo(el.dataset.go));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') goTo(el.dataset.go); });
+  });
   const initial = location.hash.slice(1);
-  if (initial) { const b = document.querySelector(`.tabs button[data-tab="${initial}"]`); if (b) b.click(); }
+  if (initial) goTo(initial);
+
+  // ---------- D-M-S guides ----------
+  const DMS_SHORT = 'Angles use <b>D-M-S</b> (degrees-minutes-seconds) separated by dashes: <code>45-30-15</code> = 45° 30′ 15″. ' +
+    'Bearings: <code>N 45-30-15 E</code>. Azimuths: <code>225-00-00</code>. Click any angle box to see how your entry is read.';
+  const DMS_TABLE = UI.table(['You type', 'It means'], [
+    [{ v: '<code>45-30-15</code>', raw: true, cls: 'txt' }, { v: '45° 30′ 15″ — 45 degrees, 30 minutes, 15 seconds', cls: 'txt' }],
+    [{ v: '<code>45 30 15</code> or <code>45°30\'15"</code>', raw: true, cls: 'txt' }, { v: 'the same angle (spaces or symbols work too)', cls: 'txt' }],
+    [{ v: '<code>7-05-00</code>', raw: true, cls: 'txt' }, { v: '7° 05′ 00″ (leading zeros are optional: 7-5-0 is the same)', cls: 'txt' }],
+    [{ v: '<code>45.5042</code>', raw: true, cls: 'txt' }, { v: 'decimal degrees (≈ 45° 30′ 15″)', cls: 'txt' }],
+    [{ v: '<code>N 45-30-15 E</code>', raw: true, cls: 'txt' }, { v: 'bearing: start facing North, turn 45° 30′ 15″ toward East', cls: 'txt' }],
+    [{ v: '<code>225-00-00</code>', raw: true, cls: 'txt' }, { v: 'azimuth: measured clockwise from North (0° to 360°)', cls: 'txt' }],
+  ]);
+  const DMS_READ = '<p class="hint"><b>Reading results:</b> <code>45°30\'15"</code> — ° = degrees, \' = minutes, " = seconds. ' +
+    '60 seconds = 1 minute and 60 minutes = 1 degree, so minutes and seconds are always less than 60. Corrections such as <code>-4.0"</code> are in seconds.</p>';
+  document.querySelectorAll('.dms-guide').forEach((el) => {
+    el.innerHTML = el.classList.contains('compact')
+      ? `<span class="dms-icon" aria-hidden="true">°′″</span><div>${DMS_SHORT} <details><summary>More formats &amp; how to read results</summary>${DMS_TABLE}${DMS_READ}</details></div>`
+      : DMS_TABLE + DMS_READ;
+  });
+  UI.initAngleHelper();
 
   $('units').addEventListener('change', () => { updateLabels(); Object.values(rerun).forEach((f) => f && f()); });
   $('secDec').addEventListener('change', () => Object.values(rerun).forEach((f) => f && f()));
@@ -44,21 +69,21 @@
   // ---------- Grids ----------
   const grids = {
     tr: UI.createGrid($('tr-grid'), [
-      { key: 'station', label: 'Station', placeholder: 'A' },
+      { key: 'station', label: 'Course (from-to)', placeholder: S.courseLabel },
       { key: 'dist', label: 'Distance', placeholder: '492.36' },
-      { key: 'dir', label: 'Bearing or azimuth', placeholder: 'N 63-24-05 E' },
-      { key: 'angle', label: 'Interior angle', placeholder: '142-25-55' },
+      { key: 'dir', label: 'Bearing or azimuth (D-M-S)', placeholder: 'N 63-24-05 E', kind: 'dir' },
+      { key: 'angle', label: 'Interior angle at first station (D-M-S)', placeholder: '142-25-55', kind: 'angle' },
       { key: 'lat', label: 'Latitude (+N / −S)', placeholder: '220.46' },
       { key: 'dep', label: 'Departure (+E / −W)', placeholder: '440.18' },
     ], { minRows: 4 }),
     ms: UI.createGrid($('ms-grid'), [
-      { key: 'station', label: 'Station', placeholder: 'A' },
+      { key: 'station', label: 'Course (from-to)', placeholder: S.courseLabel },
       { key: 'dist', label: 'Distance (blank or ? if unknown)', placeholder: '492.36 or ?' },
-      { key: 'dir', label: 'Bearing / azimuth (blank or ? if unknown)', placeholder: 'N 63-24-05 E or ?' },
+      { key: 'dir', label: 'Bearing / azimuth, D-M-S (blank or ? if unknown)', placeholder: 'N 63-24-05 E or ?', kind: 'dir', allowUnknown: true },
     ], { minRows: 4 }),
     rd: UI.createGrid($('rd-grid'), [
       { key: 'name', label: 'Point', placeholder: '101' },
-      { key: 'dir', label: 'Angle right', placeholder: '32-15-20' },
+      { key: 'dir', label: 'Angle right (D-M-S)', placeholder: '32-15-20', kind: 'angle' },
       { key: 'dist', label: 'Horizontal distance', placeholder: '245.62' },
     ], { minRows: 4 }),
   };
@@ -83,11 +108,12 @@
     if (mode === 'latdep') grids.tr.setHidden(['dist', 'dir', 'angle']);
     else if (dt === 'angles') grids.tr.setHidden(['dir', 'lat', 'dep']);
     else grids.tr.setHidden(['angle', 'lat', 'dep']);
+    const courses = 'Each row is one course, named by the stations it joins: A-B, B-C, C-D … and the last course closes back to the start (e.g. D-A). Numbers work too (1-2, 2-3 …).';
     $('tr-hint').textContent = mode === 'latdep'
-      ? 'Enter the latitude (north +, south −) and departure (east +, west −) of each course. Distances and bearings are computed.'
+      ? `${courses} Enter the latitude (north +, south −) and departure (east +, west −) of each course; distances and bearings are computed.`
       : dt === 'angles'
-        ? 'Each row is a station and the course leaving it. Enter the interior angle measured at that station and the distance to the next station. The first course direction orients the traverse.'
-        : 'Each row is the course from that station to the next one (the last course closes back to the first station). Directions may be bearings (N 45-30-00 E) or azimuths (45-30-00).';
+        ? `${courses} For course A-B, enter the interior angle measured at station A and the distance from A to B. The first course direction orients the traverse.`
+        : `${courses} Directions may be bearings (N 45-30-00 E) or azimuths (45-30-00).`;
   }
   $('tr-mode').addEventListener('change', trModeChanged);
   $('tr-dirtype').addEventListener('change', trModeChanged);
@@ -200,7 +226,7 @@
     rerun.missing = runMissing;
     if (res.errors.length) { out.innerHTML = UI.messages(res.errors); redraw.missing = null; return; }
     const u = U();
-    let h = UI.messages([], [], [
+    let h = UI.messages([], res.warnings, [
       `${res.caseName}. The known courses leave a closing vector of ${L(res.closing.dist)} ${u.len} at ${brg(res.closing.az)} (Lat ${Ls(res.closing.lat)}, Dep ${Ls(res.closing.dep)}).` +
       (res.solutions.length > 1 ? ' Two geometric solutions exist — choose the one that matches the field sketch.' : ''),
     ]);
@@ -219,7 +245,7 @@
         (sol.area < 1e-6 * sol.perimeter * sol.perimeter ? UI.messages([], ['This solution folds back on itself (zero area) — it is not a valid parcel.'])
           : sol.crosses ? UI.messages([], ['This solution makes the boundary cross itself — it is probably not the intended figure.']) : '') +
         '<div class="two-col"><div>' + UI.table(['Course', 'Bearing', 'Azimuth', `Distance (${u.len})`, 'Latitude', 'Departure', 'Station', 'Northing', 'Easting', 'Interior ∠'], rows) +
-        `</div><canvas class="plot" id="ms-canvas-${k}"></canvas></div>`, { csv: `missing-solution-${k + 1}`, legend });
+        `</div><canvas class="plot" id="ms-canvas-${k}"></canvas></div>`, { csv: `missing-side-solution-${k + 1}`, legend });
     });
     out.innerHTML = h;
     redraw.missing = () => res.solutions.forEach((sol, k) => {
@@ -241,7 +267,8 @@
   function rdRefChanged() {
     const angle = $('rd-ref').value === 'angle';
     document.querySelector('#tab-radiation .rd-bs').style.display = angle ? '' : 'none';
-    grids.rd.setLabel('dir', angle ? 'Angle right from backsight' : 'Azimuth or bearing');
+    grids.rd.setLabel('dir', angle ? 'Angle right from backsight (D-M-S)' : 'Azimuth or bearing (D-M-S)');
+    grids.rd.setColumn('dir', angle ? { kind: 'angle', placeholder: '32-15-20' } : { kind: 'dir', placeholder: 'N 32-15-20 E' });
   }
   $('rd-ref').addEventListener('change', rdRefChanged);
 

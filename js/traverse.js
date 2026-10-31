@@ -10,8 +10,35 @@
   const S = root.Survey;
   const RAD = S.RAD;
 
-  function stationName(c, i) {
-    return (c.station && String(c.station).trim()) || String(i + 1);
+  /** Default station letters: A, B, … Z, then 27, 28, … */
+  function stationLetter(i) {
+    return i < 26 ? String.fromCharCode(65 + i) : String(i + 1);
+  }
+
+  /** Suggested course label for row i of n, e.g. "A-B", with the last course closing back to A. */
+  function courseLabel(i, n) {
+    return `${stationLetter(i)}-${stationLetter(n > 0 ? (i + 1) % n : i + 1)}`;
+  }
+
+  /** Course label "A-B", "1–2", "A to B" or just "A" (the station the course leaves). */
+  function parseCourse(c, i) {
+    const s = c.station ? String(c.station).trim() : '';
+    const m = s.match(/^(.+?)\s*(?:\s+to\s+|[-–—→>]+)\s*(.+)$/i);
+    if (m) return { from: m[1].trim(), to: m[2].trim() };
+    return { from: s || stationLetter(i), to: '' };
+  }
+
+  /** Station names for each course, with the "to" station defaulting to the next course's "from". */
+  function courseStations(courses, warnings) {
+    const n = courses.length;
+    const parsed = courses.map(parseCourse);
+    return parsed.map((p, i) => {
+      const next = parsed[(i + 1) % n].from;
+      if (p.to && n > 1 && p.to !== next) {
+        warnings.push(`Course ${p.from}-${p.to} ends at ${p.to}, but the next course starts at ${next}. Courses should run in order around the figure (A-B, B-C, …).`);
+      }
+      return { station: p.from, to: p.to || next };
+    });
   }
 
   /**
@@ -31,8 +58,7 @@
     const n = courses.length;
     if (n < 3) errors.push('A closed traverse needs at least 3 courses.');
 
-    const rows = courses.map((c, i) => ({ station: stationName(c, i), index: i }));
-    rows.forEach((r, i) => { r.to = rows[(i + 1) % n].station; });
+    const rows = courseStations(courses, warnings).map((s, i) => ({ station: s.station, to: s.to, index: i }));
 
     let angleInfo = null;
 
@@ -178,16 +204,18 @@
     const n = courses.length;
     if (n < 3) errors.push('Enter at least 3 courses.');
 
+    const warnings = [];
+    const stations = courseStations(courses, warnings);
     const items = courses.map((c, i) => {
       const unkDist = S.isUnknown(c.dist);
       const unkDir = S.isUnknown(c.dir);
       const dist = unkDist ? NaN : S.parseNumber(c.dist);
       const az = unkDir ? NaN : S.parseDirection(c.dir);
-      if (!unkDist && !(dist > 0)) errors.push(`Course ${i + 1}: distance "${c.dist}" is invalid.`);
-      if (!unkDir && !isFinite(az)) errors.push(`Course ${i + 1}: direction "${c.dir}" is invalid.`);
-      return { station: stationName(c, i), unkDist, unkDir, dist, az };
+      const label = `${stations[i].station}-${stations[i].to}`;
+      if (!unkDist && !(dist > 0)) errors.push(`Course ${label}: distance "${c.dist}" is invalid.`);
+      if (!unkDir && !isFinite(az)) errors.push(`Course ${label}: direction "${c.dir}" is invalid.`);
+      return { station: stations[i].station, to: stations[i].to, unkDist, unkDir, dist, az };
     });
-    items.forEach((it, i) => { it.to = items[(i + 1) % n].station; });
 
     const unknowns = [];
     items.forEach((it, i) => {
@@ -289,7 +317,7 @@
       return { rows, pts, area: poly.area, perimeter, crosses };
     });
 
-    return { errors: [], caseName, closing: { lat: R[0], dep: R[1], dist: Rlen, az: S.azOf(R[0], R[1]) }, solutions: results };
+    return { errors: [], warnings, caseName, closing: { lat: R[0], dep: R[1], dist: Rlen, az: S.azOf(R[0], R[1]) }, solutions: results };
   }
 
   function segIntersect(a, b, c, d) {
@@ -368,5 +396,5 @@
     return { errors: [], station, pts, verts, courses, poly, wedges, perimeter: poly ? poly.perimeter : null };
   }
 
-  Object.assign(S, { computeTraverse, computeMissing, computeRadiation, selfIntersects });
+  Object.assign(S, { computeTraverse, computeMissing, computeRadiation, selfIntersects, courseLabel, stationLetter });
 })(typeof window !== 'undefined' ? window : globalThis);

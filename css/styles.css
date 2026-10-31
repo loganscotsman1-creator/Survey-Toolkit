@@ -216,3 +216,40 @@ canvas.plot.tall { height: 600px; }
   .tab-panel:not(.active) { display: none !important; }
   body { background: #fff; }
 }
+
+/* Tool menu */
+.brand[data-go] { cursor: pointer; }
+.tabs .home-tab { color: var(--text); }
+.tool-menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.tool-card {
+  text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; box-shadow: var(--shadow); transition: border-color 0.15s, transform 0.15s;
+}
+.tool-card:hover, .tool-card:focus-visible { border-color: var(--accent); transform: translateY(-2px); outline: none; }
+.tool-card .tool-title { display: block; font-size: 17px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+.tool-card .tool-title::after { content: " →"; }
+.tool-card ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+.tool-card li { margin: 3px 0; }
+
+/* D-M-S guidance */
+.dms-guide.compact {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 14px;
+}
+.dms-guide .dms-icon { font-weight: 700; color: var(--accent); font-size: 16px; white-space: nowrap; }
+.dms-guide details { margin-top: 6px; }
+.dms-guide summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.dms-guide details .table-wrap { margin-top: 8px; }
+.dms-guide table.out td { white-space: normal; }
+.dms-card table.out td { white-space: normal; }
+.angle-tip {
+  position: fixed; z-index: 40; max-width: min(460px, calc(100vw - 16px));
+  background: var(--text); color: var(--bg); font-size: 12.5px; line-height: 1.4;
+  padding: 6px 10px; border-radius: 6px; box-shadow: var(--shadow); pointer-events: none;
+}
+.angle-tip b { font-family: var(--mono); }
+.angle-tip .bad { color: #ff9b8f; font-weight: 700; }
+@media (prefers-color-scheme: dark) { .angle-tip .bad { color: #b3261e; } }
+.tool-card { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; }
+.dms-guide table.out th, .dms-card table.out th { text-align: left; }

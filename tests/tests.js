@@ -108,6 +108,19 @@
     eq(r.area, 5000, 1e-9);
   });
 
+  test('course labels A-B / 1-2 and suggested labels', () => {
+    const r = S.computeTraverse({ mode: 'distdir', dirType: 'direction', courses: [
+      { station: 'A-B', dist: 100, dir: '0' }, { station: 'B-C', dist: 100, dir: '90' }, { station: 'C-D', dist: 100, dir: '180' }, { station: 'D-A', dist: 100, dir: '270' }] });
+    eq(r.rows[0].station, 'A'); eq(r.rows[0].to, 'B'); eq(r.rows[3].to, 'A');
+    eq(r.warnings.length, 0, 0, 'no chain warnings');
+    const bad = S.computeTraverse({ mode: 'distdir', dirType: 'direction', courses: [
+      { station: '1-2', dist: 100, dir: '0' }, { station: '3-4', dist: 100, dir: '90' }, { station: '4-1', dist: 141.42, dir: '225' }] });
+    if (!bad.warnings.some((w) => /ends at 2/.test(w))) throw new Error('expected a broken-chain warning');
+    const blank = S.computeTraverse({ mode: 'latdep', courses: [{ lat: 1, dep: 0 }, { lat: 0, dep: 1 }, { lat: -1, dep: -1 }] });
+    eq(blank.rows[0].station, 'A'); eq(blank.rows[2].to, 'A');
+    eq(S.courseLabel(0, 4), 'A-B'); eq(S.courseLabel(3, 4), 'D-A');
+  });
+
   // ---------- missing data ----------
   const square = (d1, a1, d2, a2, d3, a3, d4, a4) => [{ dist: d1, dir: a1 }, { dist: d2, dir: a2 }, { dist: d3, dir: a3 }, { dist: d4, dir: a4 }];
   test('missing: one full course', () => {

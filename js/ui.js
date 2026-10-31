@@ -28,7 +28,13 @@
     let hidden = new Set();
 
     function renumber() {
-      [...tbody.rows].forEach((tr, i) => { tr.cells[0].textContent = (opts.numberLabel || '') + (i + 1); });
+      const rows = [...tbody.rows];
+      rows.forEach((tr, i) => {
+        tr.cells[0].textContent = (opts.numberLabel || '') + (i + 1);
+        columns.forEach((c) => {
+          if (typeof c.placeholder === 'function') tr.querySelector(`input[data-key="${c.key}"]`).placeholder = c.placeholder(i, rows.length);
+        });
+      });
     }
 
     function visibleKeys() { return columns.map((c) => c.key).filter((k) => !hidden.has(k)); }
@@ -59,7 +65,7 @@
     function addRow(values = {}) {
       const tr = document.createElement('tr');
       tr.innerHTML = '<td class="num"></td>' + columns.map((c) =>
-        `<td data-key="${c.key}" class="${hidden.has(c.key) ? 'col-hidden' : ''}"><input type="text" data-key="${c.key}" placeholder="${esc(c.placeholder || '')}" aria-label="${esc(c.label)}" spellcheck="false"></td>`).join('') +
+        `<td data-key="${c.key}" class="${hidden.has(c.key) ? 'col-hidden' : ''}"><input type="text" data-key="${c.key}"${c.kind ? ` data-kind="${c.kind}"` : ''}${c.allowUnknown ? ' data-allow-unknown="1"' : ''} placeholder="${esc(typeof c.placeholder === 'string' ? c.placeholder : '')}" aria-label="${esc(c.label)}" spellcheck="false"></td>`).join('') +
         '<td><button class="del" title="Remove row" aria-label="Remove row">×</button></td>';
       columns.forEach((c) => {
         const inp = tr.querySelector(`input[data-key="${c.key}"]`);
@@ -110,8 +116,73 @@
       if (th) th.textContent = label;
     }
 
+    function setColumn(key, props) {
+      const col = columns.find((c) => c.key === key);
+      Object.assign(col, props);
+      tbody.querySelectorAll(`input[data-key="${key}"]`).forEach((inp) => {
+        if (props.kind) inp.dataset.kind = props.kind;
+        if (typeof props.placeholder === 'string') inp.placeholder = props.placeholder;
+      });
+      renumber();
+    }
+
     setRows([]);
-    return { addRow, getRows, setRows, setHidden, setLabel, table };
+    return { addRow, getRows, setRows, setHidden, setLabel, setColumn, table };
+  };
+
+  // ---------- Angle entry helper ----------
+  // Inputs with data-kind="angle" or "dir" show how the typed value is being read.
+
+  const spacedDMS = (s) => s.replace(/°/, '° ').replace(/'/, '′ ').replace(/"/, '″');
+
+  UI.angleHint = function (kind, value, allowUnknown) {
+    const v = String(value || '').trim();
+    const dms = '<b>D-M-S</b> = degrees-minutes-seconds';
+    if (!v) {
+      return kind === 'dir'
+        ? `Bearing <b>N 45-30-15 E</b> or azimuth <b>45-30-15</b> · ${dms}`
+        : `Type <b>45-30-15</b> for 45° 30′ 15″ · ${dms}`;
+    }
+    if (allowUnknown && v === '?') return 'Unknown — this value will be solved';
+    const val = kind === 'dir' ? S.parseDirection(v) : S.parseAngle(v);
+    if (!isFinite(val)) {
+      const parts = v.replace(/^[NS]\s*|\s*[EW]$/gi, '').split(/[^0-9.]+/).filter(Boolean).map(Number);
+      let why = 'use D-M-S, e.g. 45-30-15';
+      if (parts.length > 1 && (parts[1] >= 60 || parts[2] >= 60)) why = 'minutes and seconds must be less than 60';
+      else if (kind === 'dir' && /^[NS]/i.test(v) && !/[EW]$/i.test(v)) why = 'a bearing ends with E or W, e.g. N 45-30-15 E';
+      else if (kind === 'dir' && /^[NS]/i.test(v)) why = 'a bearing angle must be 0° to 90°';
+      return `<span class="bad">Can't read “${esc(v)}”</span> — ${why}`;
+    }
+    const secs = val * 3600;
+    const dec = Math.abs(secs - Math.round(secs)) > 0.005 ? 1 : 0;
+    if (kind === 'dir') {
+      return `Reads as bearing <b>${spacedDMS(S.formatBearing(val, dec))}</b> = azimuth <b>${spacedDMS(S.formatAzimuth(val, dec))}</b>`;
+    }
+    return `Reads as <b>${spacedDMS(S.formatDMS(val, dec))}</b> (${val.toFixed(6)}°)`;
+  };
+
+  UI.initAngleHelper = function () {
+    const tip = document.createElement('div');
+    tip.className = 'angle-tip';
+    tip.hidden = true;
+    document.body.appendChild(tip);
+    let current = null;
+    const place = () => {
+      if (!current) return;
+      const r = current.getBoundingClientRect();
+      tip.style.left = Math.max(8, Math.min(r.left, window.innerWidth - tip.offsetWidth - 8)) + 'px';
+      tip.style.top = r.bottom + 4 + 'px';
+    };
+    const show = (inp) => {
+      current = inp;
+      tip.innerHTML = UI.angleHint(inp.dataset.kind, inp.value, inp.dataset.allowUnknown);
+      tip.hidden = false;
+      place();
+    };
+    document.addEventListener('focusin', (e) => { if (e.target.matches && e.target.matches('input[data-kind]')) show(e.target); });
+    document.addEventListener('input', (e) => { if (e.target === current) show(e.target); });
+    document.addEventListener('focusout', (e) => { if (e.target === current) { tip.hidden = true; current = null; } });
+    window.addEventListener('scroll', place, true);
   };
 
   // ---------- Output helpers ----------
