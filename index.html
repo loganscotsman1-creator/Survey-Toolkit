@@ -40,56 +40,38 @@
     <section id="tab-home" class="tab-panel active">
       <div class="panel-head">
         <h1>Choose a tool</h1>
-        <p>Pick what you want to calculate. You can switch tools at any time from the bar above, or return here with <strong>☰ All tools</strong>.</p>
+        <p>Pick a tool to start. Come back here any time with <strong>☰ All tools</strong>.</p>
       </div>
-      <div class="tool-menu">
-        <button class="tool-card" data-go="traverse">
-          <span class="tool-title">Closed Traverse</span>
-          <ul>
-            <li>Enter courses (A-B, B-C …) as bearings/azimuths, interior angles, or latitudes &amp; departures</li>
-            <li>Finds misclosure and precision, then adjusts by the Compass or Transit rule with corrections highlighted</li>
-            <li>Gives adjusted bearings, distances, coordinates, area and a sketch</li>
-          </ul>
+      <div class="tool-list">
+        <button class="tool-item" data-go="traverse">
+          <svg class="tool-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M9 30 17 9 37 13 40 34 20 40Z" class="line fill"/><circle cx="9" cy="30" r="2.6" class="ink"/><circle cx="17" cy="9" r="2.6" class="ink"/><circle cx="37" cy="13" r="2.6" class="ink"/><circle cx="40" cy="34" r="2.6" class="ink"/><circle cx="20" cy="40" r="2.6" class="ink"/></svg>
+          <span class="tool-text"><span class="tool-title">Closed Traverse</span><span class="tool-desc">Adjust a closed traverse and find its coordinates and area.</span></span>
+          <span class="tool-arrow" aria-hidden="true">›</span>
         </button>
-        <button class="tool-card" data-go="missing">
-          <span class="tool-title">Missing Side</span>
-          <ul>
-            <li>Solves an unknown side of a closed traverse from the other courses</li>
-            <li>Handles a missing length and bearing, two lengths, two bearings, or one of each</li>
-            <li>Shows the completed traverse, coordinates, area and sketch</li>
-          </ul>
+        <button class="tool-item" data-go="missing">
+          <svg class="tool-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M20 40 9 30 17 9 37 13" class="line"/><path d="M37 13 40 34 20 40" class="line warn dash"/><text x="31" y="31" class="q">?</text><circle cx="9" cy="30" r="2.6" class="ink"/><circle cx="17" cy="9" r="2.6" class="ink"/><circle cx="37" cy="13" r="2.6" class="ink"/><circle cx="20" cy="40" r="2.6" class="ink"/><circle cx="40" cy="34" r="2.6" class="warnfill"/></svg>
+          <span class="tool-text"><span class="tool-title">Missing Side</span><span class="tool-desc">Solve an unknown side from the rest of the traverse.</span></span>
+          <span class="tool-arrow" aria-hidden="true">›</span>
         </button>
-        <button class="tool-card" data-go="radiation">
-          <span class="tool-title">Radiation</span>
-          <ul>
-            <li>Locates points shot from one station by angle and distance</li>
-            <li>Computes point coordinates and the boundary courses between them</li>
-            <li>Gives the parcel area, interior angles and a sketch</li>
-          </ul>
+        <button class="tool-item" data-go="radiation">
+          <svg class="tool-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 22 22 7 40 15 38 36 16 40Z" class="line fill thin"/><path d="M24 24 10 22" class="ray"/><path d="M24 24 22 7" class="ray"/><path d="M24 24 40 15" class="ray"/><path d="M24 24 38 36" class="ray"/><path d="M24 24 16 40" class="ray"/><circle cx="10" cy="22" r="2.6" class="ink"/><circle cx="22" cy="7" r="2.6" class="ink"/><circle cx="40" cy="15" r="2.6" class="ink"/><circle cx="38" cy="36" r="2.6" class="ink"/><circle cx="16" cy="40" r="2.6" class="ink"/><circle cx="24" cy="24" r="3.4" class="warnfill"/></svg>
+          <span class="tool-text"><span class="tool-title">Radiation</span><span class="tool-desc">Locate points by angle and distance from one station.</span></span>
+          <span class="tool-arrow" aria-hidden="true">›</span>
         </button>
-        <button class="tool-card" data-go="hcurve">
-          <span class="tool-title">Horizontal Curve</span>
-          <ul>
-            <li>From Δ plus degree of curvature or radius, and a PI or PC station</li>
-            <li>Computes T, L, LC, E, M and the PC / PI / PT stations</li>
-            <li>Stakeout table of deflections and chords every 25, 50 or 100 ft</li>
-          </ul>
+        <button class="tool-item" data-go="hcurve">
+          <svg class="tool-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M4 38 24 10 44 38" class="ray"/><path d="M10.4 29 24 38.7 37.6 29" class="ray"/><path d="M10.4 29A16.7 16.7 0 0 1 37.6 29" class="line thick"/><circle cx="24" cy="38.7" r="2" class="mutedfill"/><circle cx="10.4" cy="29" r="2.6" class="ink"/><circle cx="37.6" cy="29" r="2.6" class="ink"/><circle cx="24" cy="10" r="2.6" class="warnfill"/></svg>
+          <span class="tool-text"><span class="tool-title">Horizontal Curve</span><span class="tool-desc">Curve elements and a stakeout table by station.</span></span>
+          <span class="tool-arrow" aria-hidden="true">›</span>
         </button>
-        <button class="tool-card" data-go="vcurve">
-          <span class="tool-title">Vertical Curve</span>
-          <ul>
-            <li>From PVI station and elevation, curve length and tangent grades</li>
-            <li>Elevations every 25, 50 or 100 ft, plus the high or low point</li>
-            <li>Shows K value, grades, offsets and a profile plot</li>
-          </ul>
+        <button class="tool-item" data-go="vcurve">
+          <svg class="tool-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M3 38 24 10 45 34" class="ray"/><path d="M16.8 23.3V42" class="tick"/><path d="M23.2 19.8V42" class="tick"/><path d="M29.3 20.1V42" class="tick"/><path d="M10 28.7 Q24 10 35 22.4" class="line thick"/><circle cx="10" cy="28.7" r="2.6" class="ink"/><circle cx="35" cy="22.4" r="2.6" class="ink"/><path d="M3 42H45" class="ground"/></svg>
+          <span class="tool-text"><span class="tool-title">Vertical Curve</span><span class="tool-desc">Elevations along a crest or sag curve.</span></span>
+          <span class="tool-arrow" aria-hidden="true">›</span>
         </button>
-        <button class="tool-card" data-go="topo">
-          <span class="tool-title">Topo Survey</span>
-          <ul>
-            <li>Imports shots from CSV/TXT, LandXML or GeoJSON</li>
-            <li>Flags duplicate points and likely bad shots; reports slopes, areas and volumes</li>
-            <li>Draws a contour map you can zoom, and exports PNG, DXF or CSV</li>
-          </ul>
+        <button class="tool-item" data-go="topo">
+          <svg class="tool-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 30C6 18 18 8 30 10S44 26 38 36 12 42 8 30Z" class="line thin"/><path d="M15 28C14 20 22 15 29 17S37 27 33 32 17 35 15 28Z" class="line thin"/><path d="M22 26C22 22 26 21 29 23S31 29 27 30 22 29 22 26Z" class="line"/><circle cx="26" cy="25.5" r="2.6" class="warnfill"/></svg>
+          <span class="tool-text"><span class="tool-title">Topo Survey</span><span class="tool-desc">Import shots, check for bad points, and map contours.</span></span>
+          <span class="tool-arrow" aria-hidden="true">›</span>
         </button>
       </div>
       <div class="card dms-card">
