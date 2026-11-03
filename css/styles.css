@@ -147,6 +147,7 @@ table.grid .del:hover { color: var(--bad-ink); }
 .col-hidden { display: none; }
 
 /* Results */
+.results { scroll-margin-top: 56px; }
 .results:empty { display: none; }
 .summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .stat { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; }

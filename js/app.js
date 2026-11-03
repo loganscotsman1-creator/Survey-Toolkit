@@ -155,14 +155,24 @@
     const warns = res.warnings.slice();
     if (res.blunderHint) warns.push(res.blunderHint);
     if (!res.meetsPrecision && res.angleInfo && res.precision < 500) warns.push('Very poor closure — confirm the traverse direction (clockwise / counter-clockwise) and that the angles are interior angles.');
-    h += UI.messages([], warns);
+    const LsC = (v) => S.fmtSigned(v, ld() + 1); // corrections carry one extra decimal so small ones stay visible
+    const closes = res.linear < 0.5 * Math.pow(10, -ld());
+    const ai0 = res.angleInfo;
+
+    h += UI.block('Errors in the input data',
+      '<div class="summary">' +
+      (ai0 ? UI.stat('Angle error', S.formatSeconds(ai0.misclosure, 1), `sum ${S.formatDMS(ai0.sum, 1)}, should be ${ai0.expected}°00'00"`) : '') +
+      UI.stat('Latitude error (Σ Lat)', `${LsC(res.sumLat)} ${u.len}`, 'should be 0') +
+      UI.stat('Departure error (Σ Dep)', `${LsC(res.sumDep)} ${u.len}`, 'should be 0') +
+      UI.stat('Linear misclosure', `${S.fmt(res.linear, ld() + 1)} ${u.len}`, !closes ? `direction ${brg(res.misAz)}` : '') +
+      UI.stat('Precision', S.precisionText(res.precision), `required 1:${Math.round(res.required).toLocaleString()} — ${res.meetsPrecision ? 'meets' : 'does NOT meet'}`, res.meetsPrecision ? 'good' : 'bad') +
+      '</div>' +
+      UI.messages([], warns, closes ? ['The courses close: there is no measurable error to correct.'] : [
+        `The courses end ${S.fmt(res.linear, ld() + 1)} ${u.len} away from where they started. The breakdown below shows how much of that error each course takes.`,
+      ]));
 
     h += '<div class="summary">' +
       UI.stat('Perimeter', `${S.fmtGroup(res.perimeter, ld())} ${u.len}`) +
-      UI.stat('Σ Latitude', `${Ls(res.sumLat)} ${u.len}`) +
-      UI.stat('Σ Departure', `${Ls(res.sumDep)} ${u.len}`) +
-      UI.stat('Linear misclosure', `${L(res.linear)} ${u.len}`, res.linear > 0 ? `direction ${brg(res.misAz)}` : '') +
-      UI.stat('Precision', S.precisionText(res.precision), `required 1:${Math.round(res.required).toLocaleString()} — ${res.meetsPrecision ? 'meets' : 'does NOT meet'}`, res.meetsPrecision ? 'good' : 'bad') +
       UI.stat('Area (coordinates)', `${S.fmtGroup(res.area, 2)} ${u.area}`, `${S.fmtGroup(res.area / u.bigFactor, 4)} ${u.bigName}`) +
       UI.stat('Area (DMD check)', `${S.fmtGroup(res.dmdArea, 2)} ${u.area}`) +
       UI.stat('Adjustment', { compass: 'Compass rule', transit: 'Transit rule', none: 'None' }[res.method], res.ccw ? 'figure runs counter-clockwise' : 'figure runs clockwise') +
@@ -184,19 +194,37 @@
     const tRows = res.rows.map((r) => [
       { v: `${r.station}–${r.to}`, cls: 'txt' },
       { v: brg(r.az), cls: computed }, { v: azs(r.az), cls: computed }, { v: L(r.dist), cls: computed },
-      { v: Ls(r.lat), cls: latdep ? '' : '' }, Ls(r.dep),
-      { v: Ls(r.cLat), cls: 'corr' }, { v: Ls(r.cDep), cls: 'corr' },
+      Ls(r.lat), Ls(r.dep),
+      { v: LsC(r.cLat), cls: 'corr' }, { v: LsC(r.cDep), cls: 'corr' },
       Ls(r.adjLat), Ls(r.adjDep),
     ]);
-    tRows.push({ cls: 'total', cells: [{ v: 'Σ', cls: 'txt' }, '', '', L(res.perimeter), Ls(res.sumLat), Ls(res.sumDep),
-      { v: Ls(-res.sumLat), cls: 'corr' }, { v: Ls(-res.sumDep), cls: 'corr' },
-      Ls(res.rows.reduce((s, r) => s + r.adjLat, 0)), Ls(res.rows.reduce((s, r) => s + r.adjDep, 0))] });
-    h += UI.block('Latitudes, departures &amp; corrections', UI.table(
-      ['Course', 'Bearing', 'Azimuth', `Distance (${u.len})`, 'Latitude', 'Departure', 'Corr. Lat', 'Corr. Dep', 'Adj. Lat', 'Adj. Dep'], tRows), { csv: 'traverse-latdep', legend });
+    tRows.push({ cls: 'total', cells: [{ v: 'Σ', cls: 'txt' }, '', '', L(res.perimeter), LsC(res.sumLat), LsC(res.sumDep),
+      { v: LsC(res.rows.reduce((t, r) => t + r.cLat, 0)), cls: 'corr' }, { v: LsC(res.rows.reduce((t, r) => t + r.cDep, 0)), cls: 'corr' },
+      Ls(res.rows.reduce((t, r) => t + r.adjLat, 0)), Ls(res.rows.reduce((t, r) => t + r.adjDep, 0))] });
+
+    let how;
+    const first = res.rows[0];
+    const name1 = `${first.station}–${first.to}`;
+    if (res.method === 'none') {
+      how = UI.messages([], ['No adjustment is selected, so the errors above are not corrected. Choose the Compass or Transit rule to see each course\'s correction.']);
+    } else {
+      const compass = res.method === 'compass';
+      const absLat = res.rows.reduce((t, r) => t + Math.abs(r.lat), 0);
+      const biggest = res.rows.reduce((m, r) => (Math.hypot(r.cLat, r.cDep) > Math.hypot(m.cLat, m.cDep) ? r : m));
+      how = `<p class="hint"><b>${compass ? 'Compass rule' : 'Transit rule'}:</b> ${compass
+        ? 'each course takes a share of the error in proportion to its length. Correction = −(Σ error) × course length ÷ perimeter.'
+        : 'each course takes a share of the error in proportion to the size of its latitude or departure. Correction = −(Σ error) × |value| ÷ Σ|values|.'}</p>` +
+        `<p class="hint"><b>Example, ${esc(name1)} latitude:</b> ${compass
+          ? `-(${LsC(res.sumLat)}) × ${L(first.dist)} ÷ ${L(res.perimeter)}`
+          : `-(${LsC(res.sumLat)}) × ${L(Math.abs(first.lat))} ÷ ${L(absLat)}`} = ${LsC(first.cLat)} ${u.len}.` +
+        (closes ? '' : ` <b>Largest correction:</b> ${esc(biggest.station)}–${esc(biggest.to)}, ${S.fmt(Math.hypot(biggest.cLat, biggest.cDep), ld() + 1)} ${u.len}.`) + '</p>';
+    }
+    h += UI.block('Corrections breakdown', how + UI.table(
+      ['Course', 'Bearing', 'Azimuth', `Distance (${u.len})`, 'Latitude', 'Departure', 'Corr. Lat', 'Corr. Dep', 'Adj. Lat', 'Adj. Dep'], tRows), { csv: 'traverse-corrections', legend });
 
     const cRows = res.rows.map((r) => [
       { v: `${r.station}–${r.to}`, cls: 'txt' }, brg(r.adjAz), azs(r.adjAz), L(r.adjDist),
-      { v: Ls(r.dDist), cls: Math.abs(r.dDist) > 0.5 * Math.pow(10, -ld()) ? 'corr' : '' },
+      { v: LsC(r.dDist), cls: Math.abs(r.dDist) >= 0.5 * Math.pow(10, -ld() - 1) ? 'corr' : '' },
       { v: S.formatSeconds(r.dAz, 1), cls: Math.abs(r.dAz * 3600) >= 0.05 ? 'corr' : '' },
       { v: r.station, cls: 'txt' }, S.fmt(r.N, ld()), S.fmt(r.E, ld()), dms(r.interior),
     ]);
@@ -243,7 +271,8 @@
     const u = U();
     let h = UI.messages([], res.warnings, [
       `${res.caseName}. The known courses leave a closing vector of ${L(res.closing.dist)} ${u.len} at ${brg(res.closing.az)} (Lat ${Ls(res.closing.lat)}, Dep ${Ls(res.closing.dep)}).` +
-      (res.solutions.length > 1 ? ' Two geometric solutions exist — choose the one that matches the field sketch.' : ''),
+      (res.solutions.length > 1 ? ' Two geometric solutions exist — choose the one that matches the field sketch.' : '') +
+      ' The solved values close the traverse exactly, so there is no misclosure to correct here. Use the Traverse tool to check a fully measured traverse.',
     ]);
     const legend = '<div class="legend"><span><span class="swatch solved"></span>Solved value</span></div>';
     res.solutions.forEach((sol, k) => {
@@ -299,7 +328,7 @@
     if (res.errors.length) { out.innerHTML = UI.messages(res.errors); redraw.radiation = null; return; }
     const u = U();
     const angle = $('rd-ref').value === 'angle';
-    let h = '';
+    let h = UI.messages([], [], ['Each point is shot once from one station, so radiation has no closure check and no corrections. A wrong reading can only be caught by re-measuring it.']);
     if (res.poly) {
       h += '<div class="summary">' +
         UI.stat('Area', `${S.fmtGroup(res.poly.area, 2)} ${u.area}`, `${S.fmtGroup(res.poly.area / u.bigFactor, 4)} ${u.bigName}`) +
@@ -608,6 +637,13 @@
 
   $('tp-run').addEventListener('click', runTopo);
   $('tp-example').addEventListener('click', () => { $('tp-text').value = S.samples.topoText(); $('tp-format').value = 'auto'; $('tp-ref').value = '745'; runTopo(); });
+
+  // Bring the results into view after an explicit Compute / Load example.
+  ['tr', 'ms', 'rd', 'hc', 'vc', 'tp'].forEach((k) => {
+    [`${k}-run`, `${k}-example`].forEach((id) => $(id).addEventListener('click', () => {
+      $(`${k}-out`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+  });
 
   // ---------- init ----------
   trModeChanged();
