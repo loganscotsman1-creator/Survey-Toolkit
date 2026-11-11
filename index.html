@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Survey Toolkit</title>
   <meta name="description" content="Engineering surveying calculations: traverses, missing sides, radiation, horizontal and vertical curves, and topographic surface analysis.">
-  <link rel="stylesheet" href="css/styles.css?v=20261103a">
+  <link rel="stylesheet" href="css/styles.css?v=20261111a">
 </head>
 <body>
   <header class="app-header">
@@ -77,16 +77,15 @@
     <section id="tab-traverse" class="tab-panel">
       <div class="panel-head">
         <h1>Closed Traverse</h1>
-        <p>Enter each course in order around the figure. The program balances angles, computes latitudes and departures, closure and precision, applies the selected adjustment, and computes coordinates and area.</p>
+        <p>Enter each course in order around the figure. The program finds the errors in the data, corrects the distances and angles (or the latitudes and departures), then computes the corrected values, coordinates and area.</p>
       </div>
       <div class="dms-guide compact"></div>
       <div class="card">
         <div class="form-row">
-          <label>Data entered as
-            <select id="tr-mode">
-              <option value="distdir">Distances + directions/angles</option>
-              <option value="latdep">Latitudes + departures</option>
-            </select>
+          <label class="switch-row">
+            <input type="checkbox" id="tr-latdep" role="switch">
+            <span class="switch" aria-hidden="true"></span>
+            <span>Enter latitudes &amp; departures<br><span class="opt">instead of distances and angles</span></span>
           </label>
           <label class="dist-only">Direction type
             <select id="tr-dirtype">
@@ -367,12 +366,12 @@
 
   <div id="tooltip" class="tooltip" hidden></div>
 
-  <script src="js/core.js?v=20261103a"></script>
-  <script src="js/traverse.js?v=20261103a"></script>
-  <script src="js/curves.js?v=20261103a"></script>
-  <script src="js/topo.js?v=20261103a"></script>
-  <script src="js/samples.js?v=20261103a"></script>
-  <script src="js/ui.js?v=20261103a"></script>
-  <script src="js/app.js?v=20261103a"></script>
+  <script src="js/core.js?v=20261111a"></script>
+  <script src="js/traverse.js?v=20261111a"></script>
+  <script src="js/curves.js?v=20261111a"></script>
+  <script src="js/topo.js?v=20261111a"></script>
+  <script src="js/samples.js?v=20261111a"></script>
+  <script src="js/ui.js?v=20261111a"></script>
+  <script src="js/app.js?v=20261111a"></script>
 </body>
 </html>

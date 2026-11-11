@@ -116,8 +116,9 @@
   // =====================================================================
   // TRAVERSE
   // =====================================================================
+  const trMode = () => ($('tr-latdep').checked ? 'latdep' : 'distdir');
   function trModeChanged() {
-    const mode = $('tr-mode').value, dt = $('tr-dirtype').value;
+    const mode = trMode(), dt = $('tr-dirtype').value;
     document.querySelectorAll('#tab-traverse .dist-only').forEach((el) => { el.style.display = mode === 'distdir' ? '' : 'none'; });
     document.querySelectorAll('#tab-traverse .angles-only').forEach((el) => { el.style.display = mode === 'distdir' && dt === 'angles' ? '' : 'none'; });
     if (mode === 'latdep') grids.tr.setHidden(['dist', 'dir', 'angle']);
@@ -125,17 +126,17 @@
     else grids.tr.setHidden(['angle', 'lat', 'dep']);
     const courses = 'Each row is one course, named by the stations it joins: A-B, B-C, C-D … and the last course closes back to the start (e.g. D-A). Numbers work too (1-2, 2-3 …).';
     $('tr-hint').textContent = mode === 'latdep'
-      ? `${courses} Enter the latitude (north +, south −) and departure (east +, west −) of each course; distances and bearings are computed.`
+      ? `${courses} Enter the latitude (north +, south −) and departure (east +, west −) of each course. The latitudes and departures are corrected first; distances and bearings are found from the corrected values.`
       : dt === 'angles'
         ? `${courses} For course A-B, enter the interior angle measured at station A and the distance from A to B. The first course direction orients the traverse.`
         : `${courses} Directions may be bearings (N 45-30-00 E) or azimuths (45-30-00).`;
   }
-  $('tr-mode').addEventListener('change', trModeChanged);
+  $('tr-latdep').addEventListener('change', trModeChanged);
   $('tr-dirtype').addEventListener('change', trModeChanged);
 
   function runTraverse() {
     const res = S.computeTraverse({
-      mode: $('tr-mode').value,
+      mode: trMode(),
       dirType: $('tr-dirtype').value,
       turn: $('tr-turn').value,
       startDir: $('tr-startdir').value,
@@ -148,8 +149,7 @@
     rerun.traverse = runTraverse;
     if (res.errors.length) { out.innerHTML = UI.messages(res.errors); redraw.traverse = null; return; }
     const u = U();
-    const latdep = $('tr-mode').value === 'latdep';
-    const computed = latdep ? 'solved' : '';
+    const latdep = trMode() === 'latdep';
     let h = '';
 
     const warns = res.warnings.slice();
@@ -178,58 +178,79 @@
       UI.stat('Adjustment', { compass: 'Compass rule', transit: 'Transit rule', none: 'None' }[res.method], res.ccw ? 'figure runs counter-clockwise' : 'figure runs clockwise') +
       '</div>';
 
-    const legend = '<div class="legend"><span><span class="swatch corr"></span>Correction applied</span>' + (latdep ? '<span><span class="swatch solved"></span>Computed from lat/dep</span>' : '') + '</div>';
-
-    if (res.angleInfo) {
-      const ai = res.angleInfo;
-      const rows = res.rows.map((r) => [
-        { v: r.station, cls: 'txt' }, dms(r.angleObs), { v: S.formatSeconds(r.angleCorr, 1), cls: 'corr' }, S.formatDMS(r.angleAdj, 1), azs(r.az), brg(r.az), `${r.station}–${r.to}`,
-      ]);
-      rows.push({ cls: 'total', cells: [{ v: 'Σ', cls: 'txt' }, S.formatDMS(ai.sum, 1), { v: S.formatSeconds(-ai.misclosure, 1), cls: 'corr' }, S.formatDMS(ai.expected, 1), '', '', ''] });
-      h += UI.block('Angle balance', UI.messages([], [], [
-        `Sum of interior angles = ${S.formatDMS(ai.sum, 1)}; required (n − 2)·180° = ${ai.expected}°00'00". Angular misclosure ${S.formatSeconds(ai.misclosure, 1)} → correction ${S.formatSeconds(ai.corrPerAngle, 2)} per angle. Closing check on the first course: ${azs(ai.closingAz)} vs ${azs(ai.startAz)}.`,
-      ]) + UI.table(['Station', 'Observed ∠', 'Correction', 'Balanced ∠', 'Azimuth of course', 'Bearing of course', 'Course'], rows), { csv: 'angle-balance', legend });
-    }
-
-    const tRows = res.rows.map((r) => [
-      { v: `${r.station}–${r.to}`, cls: 'txt' },
-      { v: brg(r.az), cls: computed }, { v: azs(r.az), cls: computed }, { v: L(r.dist), cls: computed },
-      Ls(r.lat), Ls(r.dep),
-      { v: LsC(r.cLat), cls: 'corr' }, { v: LsC(r.cDep), cls: 'corr' },
-      Ls(r.adjLat), Ls(r.adjDep),
-    ]);
-    tRows.push({ cls: 'total', cells: [{ v: 'Σ', cls: 'txt' }, '', '', L(res.perimeter), LsC(res.sumLat), LsC(res.sumDep),
-      { v: LsC(res.rows.reduce((t, r) => t + r.cLat, 0)), cls: 'corr' }, { v: LsC(res.rows.reduce((t, r) => t + r.cDep, 0)), cls: 'corr' },
-      Ls(res.rows.reduce((t, r) => t + r.adjLat, 0)), Ls(res.rows.reduce((t, r) => t + r.adjDep, 0))] });
-
-    let how;
+    const legend = '<div class="legend"><span><span class="swatch corr"></span>Correction applied</span></div>';
+    const sum = (f) => res.rows.reduce((t, r) => t + f(r), 0);
+    const tinyLen = 0.5 * Math.pow(10, -ld() - 1);
+    const corrLen = (v) => ({ v: LsC(v), cls: Math.abs(v) >= tinyLen ? 'corr' : '' });
+    const corrAng = (deg) => ({ v: S.formatSeconds(deg, 1), cls: Math.abs(deg * 3600) >= 0.05 ? 'corr' : '' });
+    const ai = res.angleInfo;
     const first = res.rows[0];
     const name1 = `${first.station}–${first.to}`;
-    if (res.method === 'none') {
-      how = UI.messages([], ['No adjustment is selected, so the errors above are not corrected. Choose the Compass or Transit rule to see each course\'s correction.']);
-    } else {
-      const compass = res.method === 'compass';
-      const absLat = res.rows.reduce((t, r) => t + Math.abs(r.lat), 0);
-      const biggest = res.rows.reduce((m, r) => (Math.hypot(r.cLat, r.cDep) > Math.hypot(m.cLat, m.cDep) ? r : m));
-      how = `<p class="hint"><b>${compass ? 'Compass rule' : 'Transit rule'}:</b> ${compass
-        ? 'each course takes a share of the error in proportion to its length. Correction = −(Σ error) × course length ÷ perimeter.'
-        : 'each course takes a share of the error in proportion to the size of its latitude or departure. Correction = −(Σ error) × |value| ÷ Σ|values|.'}</p>` +
-        `<p class="hint"><b>Example, ${esc(name1)} latitude:</b> ${compass
-          ? `-(${LsC(res.sumLat)}) × ${L(first.dist)} ÷ ${L(res.perimeter)}`
-          : `-(${LsC(res.sumLat)}) × ${L(Math.abs(first.lat))} ÷ ${L(absLat)}`} = ${LsC(first.cLat)} ${u.len}.` +
-        (closes ? '' : ` <b>Largest correction:</b> ${esc(biggest.station)}–${esc(biggest.to)}, ${S.fmt(Math.hypot(biggest.cLat, biggest.cDep), ld() + 1)} ${u.len}.`) + '</p>';
-    }
-    h += UI.block('Corrections breakdown', how + UI.table(
-      ['Course', 'Bearing', 'Azimuth', `Distance (${u.len})`, 'Latitude', 'Departure', 'Corr. Lat', 'Corr. Dep', 'Adj. Lat', 'Adj. Dep'], tRows), { csv: 'traverse-corrections', legend });
+    const compass = res.method === 'compass';
+    const biggest = res.rows.reduce((m, r) => (Math.hypot(r.cLat, r.cDep) > Math.hypot(m.cLat, m.cDep) ? r : m));
+    // With no closure adjustment, interior angles come only from balancing the angle sum.
+    const adjAngle = (r) => (res.method === 'none' ? r.angleAdj : r.interior);
 
-    const cRows = res.rows.map((r) => [
-      { v: `${r.station}–${r.to}`, cls: 'txt' }, brg(r.adjAz), azs(r.adjAz), L(r.adjDist),
-      { v: LsC(r.dDist), cls: Math.abs(r.dDist) >= 0.5 * Math.pow(10, -ld() - 1) ? 'corr' : '' },
-      { v: S.formatSeconds(r.dAz, 1), cls: Math.abs(r.dAz * 3600) >= 0.05 ? 'corr' : '' },
-      { v: r.station, cls: 'txt' }, S.fmt(r.N, ld()), S.fmt(r.E, ld()), dms(r.interior),
-    ]);
-    h += UI.block('Adjusted courses &amp; coordinates', UI.table(
-      ['Course', 'Adj. bearing', 'Adj. azimuth', `Adj. distance (${u.len})`, 'Δ Dist', 'Δ Dir', 'Station', 'Northing', 'Easting', 'Interior ∠ (adjusted)'], cRows), { csv: 'traverse-coordinates', legend });
+    // How the corrections were found.
+    let how;
+    if (res.method === 'none') {
+      how = UI.messages([], ['No adjustment is selected, so the closing error is not corrected. Choose the Compass or Transit rule to see each course\'s correction.' +
+        (ai ? ` (The angles are still balanced: ${S.formatSeconds(ai.corrPerAngle, 1)} each.)` : '')]);
+    } else {
+      const rule = compass
+        ? 'each course takes a share of the closing error in proportion to its length (correction = −Σ error × length ÷ perimeter)'
+        : 'each course takes a share of the closing error in proportion to the size of its latitude and departure (correction = −Σ error × |value| ÷ Σ|values|)';
+      how = `<p class="hint"><b>${compass ? 'Compass rule' : 'Transit rule'}:</b> ${rule}.</p>`;
+      if (latdep) {
+        const absLat = sum((r) => Math.abs(r.lat));
+        how += `<p class="hint"><b>Example, ${esc(name1)} latitude:</b> ${compass
+          ? `-(${LsC(res.sumLat)}) × ${L(first.dist)} ÷ ${L(res.perimeter)}`
+          : `-(${LsC(res.sumLat)}) × ${L(Math.abs(first.lat))} ÷ ${L(absLat)}`} = ${LsC(first.cLat)} ${u.len}.</p>`;
+      } else {
+        how += `<p class="hint">Applying each course's share changes its length and direction; those adjustments are listed below${ai
+          ? `. Angle corrections include the ${S.formatSeconds(ai.corrPerAngle, 1)} per angle from balancing the angle sum to ${ai.expected}°`
+          : ''}.</p>`;
+      }
+      if (!closes) how += `<p class="hint"><b>Largest correction:</b> course ${esc(biggest.station)}–${esc(biggest.to)} moves ${S.fmt(Math.hypot(biggest.cLat, biggest.cDep), ld() + 1)} ${u.len}.</p>`;
+    }
+
+    // Step 1 — corrections to what was entered.
+    let head, rows;
+    if (latdep) {
+      head = ['Course', 'Latitude', 'Correction', 'Adjusted latitude', 'Departure', 'Correction', 'Adjusted departure'];
+      rows = res.rows.map((r) => [{ v: `${r.station}–${r.to}`, cls: 'txt' }, Ls(r.lat), corrLen(r.cLat), Ls(r.adjLat), Ls(r.dep), corrLen(r.cDep), Ls(r.adjDep)]);
+      rows.push({ cls: 'total', cells: [{ v: 'Σ', cls: 'txt' }, LsC(res.sumLat), { v: LsC(sum((r) => r.cLat)), cls: 'corr' }, Ls(sum((r) => r.adjLat)),
+        LsC(res.sumDep), { v: LsC(sum((r) => r.cDep)), cls: 'corr' }, Ls(sum((r) => r.adjDep))] });
+    } else if (ai) {
+      head = ['Course', `Distance (${u.len})`, 'Correction', 'Adjusted distance', 'Interior ∠ at start', 'Correction', 'Adjusted ∠', 'Adjusted bearing'];
+      rows = res.rows.map((r) => [{ v: `${r.station}–${r.to}`, cls: 'txt' }, L(r.dist), corrLen(r.dDist), L(r.adjDist),
+        dms(r.angleObs), corrAng(adjAngle(r) - r.angleObs), dms(adjAngle(r)), brg(res.method === 'none' ? r.az : r.adjAz)]);
+      const sumAdj = sum(adjAngle);
+      rows.push({ cls: 'total', cells: [{ v: 'Σ', cls: 'txt' }, L(res.perimeter), { v: LsC(sum((r) => r.dDist)), cls: 'corr' }, L(sum((r) => r.adjDist)),
+        S.formatDMS(ai.sum, 1), { v: S.formatSeconds(sumAdj - ai.sum, 1), cls: 'corr' }, S.formatDMS(sumAdj, 1), ''] });
+    } else {
+      head = ['Course', `Distance (${u.len})`, 'Correction', 'Adjusted distance', 'Bearing', 'Correction', 'Adjusted bearing', 'Adjusted azimuth'];
+      rows = res.rows.map((r) => [{ v: `${r.station}–${r.to}`, cls: 'txt' }, L(r.dist), corrLen(r.dDist), L(r.adjDist),
+        brg(r.az), corrAng(r.dAz), brg(r.adjAz), azs(r.adjAz)]);
+      rows.push({ cls: 'total', cells: [{ v: 'Σ', cls: 'txt' }, L(res.perimeter), { v: LsC(sum((r) => r.dDist)), cls: 'corr' }, L(sum((r) => r.adjDist)), '', '', '', ''] });
+    }
+    h += UI.block(latdep ? 'Corrections to latitudes &amp; departures' : 'Corrections to distances &amp; angles', how + UI.table(head, rows), { csv: 'traverse-corrections', legend });
+
+    // Step 2 — values that can only be found once the corrections are applied.
+    if (latdep) {
+      const aRows = res.rows.map((r) => [{ v: `${r.station}–${r.to}`, cls: 'txt' }, brg(r.adjAz), azs(r.adjAz), L(r.adjDist), dms(r.interior),
+        { v: r.station, cls: 'txt' }, S.fmt(r.N, ld()), S.fmt(r.E, ld())]);
+      aRows.push({ cls: 'total', cells: [{ v: 'Σ', cls: 'txt' }, '', '', L(sum((r) => r.adjDist)), S.formatDMS(sum((r) => r.interior), 1), '', '', ''] });
+      h += UI.block('Distances, bearings &amp; coordinates (after corrections)', UI.table(
+        ['Course', 'Bearing', 'Azimuth', `Distance (${u.len})`, 'Interior ∠ at start', 'Station', 'Northing', 'Easting'], aRows), { csv: 'traverse-adjusted' });
+    } else {
+      const aRows = res.rows.map((r) => [{ v: `${r.station}–${r.to}`, cls: 'txt' }, Ls(r.adjLat), Ls(r.adjDep),
+        { v: r.station, cls: 'txt' }, S.fmt(r.N, ld()), S.fmt(r.E, ld())]);
+      aRows.push({ cls: 'total', cells: [{ v: 'Σ', cls: 'txt' }, Ls(sum((r) => r.adjLat)), Ls(sum((r) => r.adjDep)), '', '', ''] });
+      h += UI.block('Latitudes, departures &amp; coordinates (after corrections)', UI.table(
+        ['Course', 'Latitude (+N / −S)', 'Departure (+E / −W)', 'Station', 'Northing', 'Easting'], aRows) +
+        (res.method === 'none' ? '<p class="hint">No adjustment selected, so these do not sum to zero.</p>' : ''), { csv: 'traverse-adjusted' });
+    }
 
     const dRows = res.rows.map((r) => [{ v: `${r.station}–${r.to}`, cls: 'txt' }, Ls(r.adjLat), Ls(r.adjDep), Ls(r.dmd), S.fmtGroup(r.dblArea, 2)]);
     const dbl = res.rows.reduce((s, r) => s + r.dblArea, 0);
@@ -249,7 +270,7 @@
   }
   $('tr-run').addEventListener('click', runTraverse);
   $('tr-example').addEventListener('click', () => {
-    const mode = $('tr-mode').value, dt = $('tr-dirtype').value;
+    const mode = trMode(), dt = $('tr-dirtype').value;
     if (mode === 'latdep') grids.tr.setRows(S.samples.traverseLatDep);
     else if (dt === 'angles') {
       grids.tr.setRows(S.samples.traverseAngles.courses);
