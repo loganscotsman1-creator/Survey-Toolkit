@@ -228,7 +228,8 @@
       const t = s.replace(/\s+/g, ' ').trim();
       return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
     };
-    return [...table.rows].map((tr) => [...tr.cells].map((c) => q(c.textContent)).join(',')).join('\r\n');
+    // A cell spanning several columns (grouped headers) is repeated so the columns stay aligned.
+    return [...table.rows].map((tr) => [...tr.cells].flatMap((c) => Array(c.colSpan || 1).fill(q(c.textContent))).join(',')).join('\r\n');
   };
 
   document.addEventListener('click', (e) => {
