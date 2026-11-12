@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Survey Toolkit</title>
   <meta name="description" content="Engineering surveying calculations: traverses, missing sides, radiation, horizontal and vertical curves, and topographic surface analysis.">
-  <link rel="stylesheet" href="css/styles.css?v=20261111c">
+  <link rel="stylesheet" href="css/styles.css?v=20261112b">
 </head>
 <body>
   <header class="app-header">
@@ -323,9 +323,9 @@
       <div class="card prose">
         <h2>Entering angles and directions</h2>
         <ul>
-          <li>Angles: <code>45-30-15</code>, <code>45°30'15"</code>, <code>45 30 15</code>, <code>45d30m15s</code> or decimal degrees <code>45.504167</code>.</li>
-          <li>Bearings: <code>N 45-30-15 E</code>, <code>S12.5W</code>, <code>N 45°30'15" W</code>.</li>
-          <li>Azimuths: a plain angle, measured clockwise from north (0–360°).</li>
+          <li>Angles: type degrees, minutes and seconds in their own boxes (seconds may have decimals). Typing <code>-</code> or a space jumps to the next box, and pasting a whole angle such as <code>45-30-15</code> fills all three.</li>
+          <li>Bearings: pick <b>N</b> or <b>S</b> before the angle and <b>E</b> or <b>W</b> after it.</li>
+          <li>Azimuths: pick <b>Az</b> instead of N or S; measured clockwise from north (0–360°).</li>
           <li>Stations: <code>12+34.56</code> (feet, 100 per station) or <code>1+234.567</code> (meters, 1000 per station). Plain numbers also work.</li>
           <li>Tables accept pasting straight from a spreadsheet (tab or comma separated).</li>
         </ul>
@@ -366,12 +366,12 @@
 
   <div id="tooltip" class="tooltip" hidden></div>
 
-  <script src="js/core.js?v=20261111c"></script>
-  <script src="js/traverse.js?v=20261111c"></script>
-  <script src="js/curves.js?v=20261111c"></script>
-  <script src="js/topo.js?v=20261111c"></script>
-  <script src="js/samples.js?v=20261111c"></script>
-  <script src="js/ui.js?v=20261111c"></script>
-  <script src="js/app.js?v=20261111c"></script>
+  <script src="js/core.js?v=20261112b"></script>
+  <script src="js/traverse.js?v=20261112b"></script>
+  <script src="js/curves.js?v=20261112b"></script>
+  <script src="js/topo.js?v=20261112b"></script>
+  <script src="js/samples.js?v=20261112b"></script>
+  <script src="js/ui.js?v=20261112b"></script>
+  <script src="js/app.js?v=20261112b"></script>
 </body>
 </html>

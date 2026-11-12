@@ -40,17 +40,19 @@
   if (initial) goTo(initial);
 
   // ---------- D-M-S guides ----------
-  const DMS_SHORT = 'Type angles as degrees-minutes-seconds: <code>45-30-15</code> = 45° 30′ 15″. Bearings: <code>N 45-30-15 E</code>.';
+  const DMS_SHORT = 'Angles have a box each for degrees °, minutes ′ and seconds ″. For a bearing pick N or S, then E or W; pick <b>Az</b> for an azimuth.';
   const DMS_FULL = '<ul class="dms-list">' +
-    '<li><code>45-30-15</code> = 45° 30′ 15″ (degrees-minutes-seconds)</li>' +
-    '<li><code>N 45-30-15 E</code> = a bearing</li>' +
-    '<li><code>225-00-00</code> = an azimuth, clockwise from north</li>' +
-    '</ul><p class="hint">Click any angle box and it shows how your entry is read.</p>';
+    '<li>Type degrees, minutes and seconds in their own boxes: <b>45</b>° <b>30</b>′ <b>15</b>″</li>' +
+    '<li>Bearings: pick <b>N</b> or <b>S</b> before the angle and <b>E</b> or <b>W</b> after it</li>' +
+    '<li>Azimuths: pick <b>Az</b> instead of N or S (measured clockwise from north)</li>' +
+    '</ul><p class="hint">Click into an angle and it shows how your entry is read.</p>';
   document.querySelectorAll('.dms-guide').forEach((el) => {
     el.innerHTML = el.classList.contains('compact')
       ? `<span class="dms-icon" aria-hidden="true">°′″</span><div>${DMS_SHORT}</div>`
       : DMS_FULL;
   });
+  // Angle and bearing fields in the forms get degree / minute / second boxes (grid cells get theirs when rows are added).
+  document.querySelectorAll('input[data-kind]').forEach((inp) => { if (!inp._dms) UI.dmsField(inp); });
   UI.initAngleHelper();
 
   // Each tool's form gets Units (and, where angles are used, angle precision) dropdowns.
@@ -129,7 +131,7 @@
       ? `${courses} Enter the latitude (north +, south −) and departure (east +, west −) of each course. Distances and bearings are worked out from them, and the corrections to all four are shown together.`
       : dt === 'angles'
         ? `${courses} For course A-B, enter the interior angle measured at station A and the distance from A to B. The first course direction orients the traverse.`
-        : `${courses} Directions may be bearings (N 45-30-00 E) or azimuths (45-30-00).`;
+        : `${courses} For each direction pick N or S and E or W for a bearing, or Az for an azimuth.`;
   }
   $('tr-latdep').addEventListener('change', trModeChanged);
   $('tr-dirtype').addEventListener('change', trModeChanged);

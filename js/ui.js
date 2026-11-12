@@ -47,7 +47,7 @@
       const startTr = e.target.closest('tr');
       let rowIdx = [...tbody.rows].indexOf(startTr);
       const keys = visibleKeys();
-      const colIdx = keys.indexOf(e.target.dataset.key);
+      const colIdx = keys.indexOf(e.target.closest('td').dataset.key);
       lines.forEach((line) => {
         const cells = line.includes('\t') ? line.split('\t') : line.split(',');
         while (rowIdx >= tbody.rows.length) addRow();
@@ -70,15 +70,18 @@
       columns.forEach((c) => {
         const inp = tr.querySelector(`input[data-key="${c.key}"]`);
         inp.value = values[c.key] !== undefined ? values[c.key] : '';
-        inp.addEventListener('paste', onPaste);
-        inp.addEventListener('keydown', (e) => {
+        if (c.kind) UI.dmsField(inp);
+        const td = inp.closest('td');
+        td.addEventListener('paste', onPaste);
+        td.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
             const rows = [...tbody.rows];
             const i = rows.indexOf(tr);
             if (i === rows.length - 1) addRow();
-            const next = tbody.rows[i + 1].querySelector(`input[data-key="${c.key}"]`);
-            next.focus();
+            const next = tbody.rows[i + 1].querySelector(`td[data-key="${c.key}"]`);
+            const field = next.querySelector('input:not([type="hidden"]), select');
+            if (field) field.focus();
           }
         });
       });
@@ -91,7 +94,7 @@
     function getRows() {
       return [...tbody.rows].map((tr) => {
         const o = {};
-        tr.querySelectorAll('input').forEach((i) => { o[i.dataset.key] = i.value.trim(); });
+        tr.querySelectorAll('input[data-key]').forEach((i) => { o[i.dataset.key] = i.value.trim(); });
         return o;
       }).filter((o) => visibleKeys().some((k) => o[k] !== ''));
     }
@@ -122,6 +125,7 @@
       tbody.querySelectorAll(`input[data-key="${key}"]`).forEach((inp) => {
         if (props.kind) inp.dataset.kind = props.kind;
         if (typeof props.placeholder === 'string') inp.placeholder = props.placeholder;
+        if (inp.dataset.kind) UI.dmsField(inp); // rebuild the boxes for the new kind
       });
       renumber();
     }
@@ -130,23 +134,126 @@
     return { addRow, getRows, setRows, setHidden, setLabel, setColumn, table };
   };
 
-  // ---------- Angle entry helper ----------
-  // Inputs with data-kind="angle" or "dir" show how the typed value is being read.
+  // ---------- Degrees / minutes / seconds entry ----------
+  // Angle and bearing inputs (data-kind="angle" | "dir") are shown as separate boxes for
+  // degrees, minutes and seconds (plus N/S and E/W for bearings). The original input is
+  // kept, hidden, and always holds the combined text ("N 45-30-15 E", "45-30-15"), so the
+  // rest of the app reads and sets angles exactly as before.
+
+  const VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+
+  /** Split "N 45-30-15 E", "45-30-15" or "45.5" into the boxes' values. */
+  function splitDMS(str, kind) {
+    const out = { q1: 'N', q2: 'E', d: '', m: '', s: '' };
+    let t = String(str || '').trim();
+    if (!t || t === '?') return out;
+    if (kind === 'dir') {
+      const b = t.toUpperCase().match(/^([NS])\s*(.*?)\s*([EW])?$/);
+      if (b) { out.q1 = b[1]; out.q2 = b[3] || 'E'; t = b[2]; } else out.q1 = 'AZ';
+    }
+    const parts = t.split(/[^0-9.]+/).filter(Boolean);
+    if (parts.length === 1 && parts[0].includes('.')) {
+      const tot = Math.round(Number(parts[0]) * 360000) / 100; // decimal degrees → seconds
+      const d = Math.floor(tot / 3600), m = Math.floor((tot - d * 3600) / 60);
+      Object.assign(out, { d: String(d), m: String(m).padStart(2, '0'), s: String(+(tot - d * 3600 - m * 60).toFixed(2)).padStart(2, '0') });
+    } else {
+      [out.d, out.m, out.s] = [parts[0] || '', parts[1] || '', parts[2] || ''];
+    }
+    return out;
+  }
+
+  UI.dmsField = function (inp) {
+    const kind = inp.dataset.kind === 'dir' ? 'dir' : 'angle';
+    if (inp._dms) inp._dms.remove();
+    inp.type = 'hidden';
+    const name = esc(inp.getAttribute('aria-label') || '');
+    const ph = splitDMS(inp.placeholder.replace(/\s+or\s+\?$/, ''), kind);
+    const w = document.createElement('span');
+    w.className = `dms-entry ${kind}`;
+    w.innerHTML =
+      (kind === 'dir' ? `<select class="dms-q1" aria-label="${name} N or S (Az for an azimuth)" title="N or S for a bearing, Az for an azimuth"><option value="N">N</option><option value="S">S</option><option value="AZ">Az</option></select>` : '') +
+      `<input type="text" class="dms-d" inputmode="decimal" maxlength="7" aria-label="${name} degrees" placeholder="${esc(ph.d)}"><span class="dms-u">°</span>` +
+      `<input type="text" class="dms-m" inputmode="numeric" maxlength="2" aria-label="${name} minutes" placeholder="${esc(ph.m)}"><span class="dms-u">′</span>` +
+      `<input type="text" class="dms-s" inputmode="decimal" maxlength="5" aria-label="${name} seconds" placeholder="${esc(ph.s)}"><span class="dms-u">″</span>` +
+      (kind === 'dir' ? `<select class="dms-q2" aria-label="${name} E or W"><option value="E">E</option><option value="W">W</option></select>` : '');
+    inp.after(w);
+    inp._dms = w;
+    const q1 = w.querySelector('.dms-q1'), q2 = w.querySelector('.dms-q2');
+    const d = w.querySelector('.dms-d'), m = w.querySelector('.dms-m'), sec = w.querySelector('.dms-s');
+
+    const tidy = () => {
+      if (q2) q2.hidden = q1.value === 'AZ';
+      [m, sec].forEach((f) => f.classList.toggle('bad', Number(f.value) >= 60));
+    };
+    const compose = () => {
+      const p = [d.value.trim(), m.value.trim(), sec.value.trim()];
+      let v = '';
+      if (p.some(Boolean)) {
+        const dms = `${p[0] || '0'}-${p[1] || '0'}-${p[2] || '0'}`;
+        v = q1 && q1.value !== 'AZ' ? `${q1.value} ${dms} ${q2.value}` : dms;
+      }
+      VALUE.set.call(inp, v);
+      tidy();
+    };
+    const fill = (str) => {
+      const p = splitDMS(str, kind);
+      if (q1) { q1.value = p.q1; q2.value = p.q2; }
+      d.value = p.d; m.value = p.m; sec.value = p.s;
+      tidy();
+    };
+    // Setting the hidden input's value (examples, pasted rows) updates the boxes.
+    Object.defineProperty(inp, 'value', {
+      configurable: true,
+      get() { return VALUE.get.call(inp); },
+      set(v) { VALUE.set.call(inp, v); fill(v); },
+    });
+    fill(VALUE.get.call(inp));
+    w.addEventListener('input', compose);
+    w.addEventListener('change', compose);
+
+    // Typing a separator jumps to the next box; two minute digits move on to seconds.
+    const boxes = [d, m, sec];
+    boxes.forEach((f, i) => {
+      f.addEventListener('keydown', (e) => {
+        if (['-', ' ', ':', '°', "'", '"'].includes(e.key)) {
+          e.preventDefault();
+          const next = boxes[i + 1] || (q2 && !q2.hidden ? q2 : null);
+          if (next) { next.focus(); if (next.select) next.select(); }
+        }
+      });
+    });
+    m.addEventListener('input', () => { if (/^\d{2}$/.test(m.value)) { sec.focus(); sec.select(); } });
+
+    // Pasting a whole angle ("45-30-15", "N 45 30 15 E") into any box fills all of them.
+    w.addEventListener('paste', (e) => {
+      const t = (e.clipboardData || window.clipboardData).getData('text').trim();
+      if (/[\t\n]/.test(t) || !/[\s\-°'":NSEW]/i.test(t)) return; // rows/columns are handled by the grid
+      e.preventDefault();
+      e.stopPropagation();
+      inp.value = t;
+      w.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    return w;
+  };
 
   const spacedDMS = (s) => s.replace(/°/, '° ').replace(/'/, '′ ').replace(/"/, '″');
 
   UI.angleHint = function (kind, value, allowUnknown) {
     const v = String(value || '').trim();
-    if (!v) return kind === 'dir' ? 'e.g. <b>N 45-30-15 E</b> or <b>45-30-15</b>' : 'e.g. <b>45-30-15</b> = 45° 30′ 15″';
+    if (!v) {
+      const how = kind === 'dir'
+        ? 'Bearing: pick N or S, type degrees, minutes, seconds, then pick E or W. Choose <b>Az</b> for an azimuth.'
+        : 'Type degrees, minutes and seconds in their own boxes.';
+      return allowUnknown ? `${how} Leave all boxes empty if it is unknown.` : how;
+    }
     if (allowUnknown && v === '?') return 'Unknown — this value will be solved';
     const val = kind === 'dir' ? S.parseDirection(v) : S.parseAngle(v);
     if (!isFinite(val)) {
       const parts = v.replace(/^[NS]\s*|\s*[EW]$/gi, '').split(/[^0-9.]+/).filter(Boolean).map(Number);
-      let why = 'try 45-30-15';
+      let why = 'check the numbers';
       if (parts.length > 1 && (parts[1] >= 60 || parts[2] >= 60)) why = 'minutes and seconds must be less than 60';
-      else if (kind === 'dir' && /^[NS]/i.test(v) && !/[EW]$/i.test(v)) why = 'a bearing ends with E or W, e.g. N 45-30-15 E';
       else if (kind === 'dir' && /^[NS]/i.test(v)) why = 'a bearing angle must be 0° to 90°';
-      return `<span class="bad">Can't read “${esc(v)}”</span> — ${why}`;
+      return `<span class="bad">Not a valid angle</span> — ${why}`;
     }
     const secs = val * 3600;
     const dec = Math.abs(secs - Math.round(secs)) > 0.005 ? 1 : 0;
@@ -161,22 +268,26 @@
     tip.className = 'angle-tip';
     tip.hidden = true;
     document.body.appendChild(tip);
-    let current = null;
+    let current = null; // the .dms-entry being edited
     const place = () => {
       if (!current) return;
       const r = current.getBoundingClientRect();
       tip.style.left = Math.max(8, Math.min(r.left, window.innerWidth - tip.offsetWidth - 8)) + 'px';
       tip.style.top = r.bottom + 4 + 'px';
     };
-    const show = (inp) => {
-      current = inp;
+    const show = (w) => {
+      current = w;
+      const inp = w.previousElementSibling;
       tip.innerHTML = UI.angleHint(inp.dataset.kind, inp.value, inp.dataset.allowUnknown);
       tip.hidden = false;
       place();
     };
-    document.addEventListener('focusin', (e) => { if (e.target.matches && e.target.matches('input[data-kind]')) show(e.target); });
-    document.addEventListener('input', (e) => { if (e.target === current) show(e.target); });
-    document.addEventListener('focusout', (e) => { if (e.target === current) { tip.hidden = true; current = null; } });
+    const entryOf = (el) => (el && el.closest ? el.closest('.dms-entry') : null);
+    document.addEventListener('focusin', (e) => { const w = entryOf(e.target); if (w) show(w); });
+    ['input', 'change'].forEach((t) => document.addEventListener(t, (e) => { const w = entryOf(e.target); if (w && w === current) show(w); }));
+    document.addEventListener('focusout', (e) => {
+      if (current && entryOf(e.target) === current && entryOf(e.relatedTarget) !== current) { tip.hidden = true; current = null; }
+    });
     window.addEventListener('scroll', place, true);
   };
 

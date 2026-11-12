@@ -30,9 +30,9 @@ The app opens on a menu describing each tool. Feet or meters can be chosen for a
 
 | Value | Examples |
 |---|---|
-| Angle (D-M-S = degrees-minutes-seconds) | `45-30-15` = 45° 30′ 15″, `45°30'15"`, `45 30 15`, `45d30m15s`, `45.504167` |
-| Bearing | `N 45-30-15 E`, `S12.5W`, `N 45°30'15" W` |
-| Azimuth | any angle, clockwise from north |
+| Angle | separate boxes for degrees °, minutes ′ and seconds ″ (seconds may have decimals); pasting `45-30-15` fills all three |
+| Bearing | pick N or S, type the angle, then pick E or W |
+| Azimuth | pick Az instead of N or S; measured clockwise from north |
 | Course | `A-B`, `B-C`, … `E-A` (or `1-2`, `2-3` …) |
 | Station | `12+34.56` (ft, 100/sta), `1+234.567` (m, 1000/sta), or a plain number |
 | Unknown (Missing Side tab) | leave blank or type `?` |
